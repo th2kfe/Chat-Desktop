@@ -1,0 +1,6 @@
+O projeto ChatDesktop é uma aplicação desktop desenvolvida
+em Java 21 e JavaFX 21.
+
+O sistema possui histórico de conversas, criação de novas
+conversas, renomeação, exclusão, regeneração e integração
+com a API da Groq.

@@ -1,0 +1,3 @@
+Java é uma linguagem de programação orientada a objetos.
+Java utiliza a JVM para executar programas compilados.
+Classes são estruturas que podem possuir atributos e métodos.

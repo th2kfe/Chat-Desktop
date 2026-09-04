@@ -1,0 +1,122 @@
+/* ============================================================
+   TEMA CLARO (padrão, aplicado quando o root NÃO tem a classe "dark")
+   ============================================================ */
+
+.app-root {
+    -fx-background-color: #f4f6f8;
+}
+
+.sidebar {
+    -fx-background-color: #3f218f;
+}
+
+.header {
+    -fx-background-color: #5b2ecc;
+}
+
+.chat-area {
+    -fx-control-inner-background: #ffffff;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dddddd;
+    -fx-text-fill: #222222;
+}
+
+.sidebar-title,
+.header-title {
+    -fx-text-fill: white;
+}
+
+.btn-light {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #333333;
+}
+
+.btn-secondary {
+    -fx-background-color: #eeeeee;
+    -fx-text-fill: #333333;
+}
+
+.btn-primary {
+    -fx-background-color: #5b2ecc;
+    -fx-text-fill: white;
+}
+
+.btn-danger {
+    -fx-background-color: #ffdddd;
+    -fx-text-fill: #b00000;
+}
+
+.origem-label {
+    -fx-text-fill: #555555;
+}
+
+.fonte-label {
+    -fx-text-fill: #777777;
+}
+
+.status-label {
+    -fx-text-fill: #666666;
+}
+
+.conversation-list .list-cell:selected {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ============================================================
+   TEMA ESCURO (aplicado quando o root TEM a classe "dark")
+   ============================================================ */
+
+.dark.app-root {
+    -fx-background-color: #1b1b26;
+}
+
+.dark .sidebar {
+    -fx-background-color: #241a3d;
+}
+
+.dark .header {
+    -fx-background-color: #3a2a66;
+}
+
+.dark .chat-area {
+    -fx-control-inner-background: #2a2a38;
+    -fx-background-color: #2a2a38;
+    -fx-border-color: #444455;
+    -fx-text-fill: #eaeaea;
+}
+
+.dark .btn-light {
+    -fx-background-color: #3a3a4a;
+    -fx-text-fill: #eeeeee;
+}
+
+.dark .btn-secondary {
+    -fx-background-color: #3a3a4a;
+    -fx-text-fill: #eeeeee;
+}
+
+.dark .btn-primary {
+    -fx-background-color: #7c4dff;
+    -fx-text-fill: white;
+}
+
+.dark .btn-danger {
+    -fx-background-color: #5a2626;
+    -fx-text-fill: #ff8080;
+}
+
+.dark .origem-label {
+    -fx-text-fill: #bbbbbb;
+}
+
+.dark .fonte-label {
+    -fx-text-fill: #999999;
+}
+
+.dark .status-label {
+    -fx-text-fill: #aaaaaa;
+}
+
+.dark .conversation-list .list-cell:selected {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+}

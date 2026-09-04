@@ -1,0 +1,5 @@
+JavaFX é um framework utilizado para criar interfaces gráficas
+em aplicações Java desktop.
+
+JavaFX possui componentes como Button, Label, TextField,
+TextArea, ListView, VBox, HBox e BorderPane.
