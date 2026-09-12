@@ -1,6 +1,8 @@
 package com.example.chatdesktop;
 
+import com.example.chatdesktop.controller.AuthController;
 import com.example.chatdesktop.controller.ChatController;
+import com.example.chatdesktop.view.AuthView;
 import com.example.chatdesktop.view.ChatView;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -11,14 +13,37 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) {
 
-        ChatView view = new ChatView();
+        AuthView authView = new AuthView();
 
-        new ChatController(view);
+        ChatView chatView = new ChatView();
+
+        new ChatController(chatView);
 
         Scene scene = new Scene(
-                view.getRoot(),
+                authView.getRoot(),
                 1000,
                 650
+        );
+
+        new AuthController(
+                authView,
+                () -> {
+
+                    System.out.println("AUTENTICOU - tentando trocar para o chat...");
+
+                    try {
+
+                        scene.setRoot(chatView.getRoot());
+
+                        System.out.println("TROCA DE TELA OK!");
+
+                    } catch (Exception erro) {
+
+                        System.out.println("ERRO AO TROCAR DE TELA: " + erro);
+
+                        erro.printStackTrace();
+                    }
+                }
         );
 
         stage.setTitle("Groq Chat - JavaFX");

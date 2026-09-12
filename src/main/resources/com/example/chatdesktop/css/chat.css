@@ -1,24 +1,24 @@
 /* ============================================================
-   TEMA CLARO (padrão, aplicado quando o root NÃO tem a classe "dark")
+   TEMA CLARO (padrão) — Preto e Branco
    ============================================================ */
 
 .app-root {
-    -fx-background-color: #f4f6f8;
+    -fx-background-color: #F5F5F5;
 }
 
 .sidebar {
-    -fx-background-color: #3f218f;
+    -fx-background-color: #111111;
 }
 
 .header {
-    -fx-background-color: #5b2ecc;
+    -fx-background-color: #1A1A1A;
 }
 
 .chat-area {
     -fx-control-inner-background: #ffffff;
     -fx-background-color: #ffffff;
-    -fx-border-color: #dddddd;
-    -fx-text-fill: #222222;
+    -fx-border-color: #DDDDDD;
+    -fx-text-fill: #111111;
 }
 
 .sidebar-title,
@@ -28,16 +28,16 @@
 
 .btn-light {
     -fx-background-color: #ffffff;
-    -fx-text-fill: #333333;
+    -fx-text-fill: #111111;
 }
 
 .btn-secondary {
-    -fx-background-color: #eeeeee;
-    -fx-text-fill: #333333;
+    -fx-background-color: #EEEEEE;
+    -fx-text-fill: #111111;
 }
 
 .btn-primary {
-    -fx-background-color: #5b2ecc;
+    -fx-background-color: #111111;
     -fx-text-fill: white;
 }
 
@@ -47,7 +47,7 @@
 }
 
 .origem-label {
-    -fx-text-fill: #555555;
+    -fx-text-fill: #333333;
 }
 
 .fonte-label {
@@ -62,51 +62,137 @@
     -fx-background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* ============================================================
-   TEMA ESCURO (aplicado quando o root TEM a classe "dark")
-   ============================================================ */
+/* -------- Marca (tela de login) -------- */
 
-.dark.app-root {
-    -fx-background-color: #1b1b26;
+.brand-label {
+    -fx-text-fill: #111111;
 }
 
-.dark .sidebar {
-    -fx-background-color: #241a3d;
+/* -------- Tela de login / registro -------- */
+
+.auth-card {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 24, 0, 0, 8);
 }
 
-.dark .header {
-    -fx-background-color: #3a2a66;
+.tabs-bar {
+    -fx-background-color: #EEEEEE;
+    -fx-background-radius: 999;
+    -fx-padding: 4;
 }
 
-.dark .chat-area {
-    -fx-control-inner-background: #2a2a38;
-    -fx-background-color: #2a2a38;
-    -fx-border-color: #444455;
-    -fx-text-fill: #eaeaea;
+.tab-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #666666;
+    -fx-font-weight: bold;
+    -fx-background-radius: 999;
+    -fx-padding: 8 0 8 0;
+    -fx-cursor: hand;
 }
 
-.dark .btn-light {
-    -fx-background-color: #3a3a4a;
-    -fx-text-fill: #eeeeee;
-}
-
-.dark .btn-secondary {
-    -fx-background-color: #3a3a4a;
-    -fx-text-fill: #eeeeee;
-}
-
-.dark .btn-primary {
-    -fx-background-color: #7c4dff;
+.tab-btn.active {
+    -fx-background-color: #111111;
     -fx-text-fill: white;
 }
 
+.form-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #111111;
+}
+
+.form-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #777777;
+}
+
+.field-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+.text-input {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #DDDDDD;
+    -fx-border-radius: 8;
+    -fx-padding: 10;
+    -fx-font-size: 13px;
+    -fx-text-fill: #111111;
+    -fx-prompt-text-fill: #aaaaaa;
+}
+
+.btn-toggle-senha {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+    -fx-text-fill: #999999;
+}
+
+.error-label {
+    -fx-text-fill: #b00000;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+
+.success-label {
+    -fx-text-fill: #2e7d32;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+    -fx-font-weight: bold;
+}
+
+.link-muted {
+    -fx-text-fill: #777777;
+    -fx-cursor: hand;
+}
+
+/* ============================================================
+   TEMA ESCURO (classe "dark" no root) — Preto e Branco
+   ============================================================ */
+
+.dark.app-root {
+    -fx-background-color: #0D0D0D;
+}
+
+.dark .sidebar {
+    -fx-background-color: #000000;
+}
+
+.dark .header {
+    -fx-background-color: #141414;
+}
+
+.dark .chat-area {
+    -fx-control-inner-background: #1A1A1A;
+    -fx-background-color: #1A1A1A;
+    -fx-border-color: #333333;
+    -fx-text-fill: #EEEEEE;
+}
+
+.dark .btn-light {
+    -fx-background-color: #262626;
+    -fx-text-fill: #EEEEEE;
+}
+
+.dark .btn-secondary {
+    -fx-background-color: #262626;
+    -fx-text-fill: #EEEEEE;
+}
+
+.dark .btn-primary {
+    -fx-background-color: #EEEEEE;
+    -fx-text-fill: #111111;
+}
+
 .dark .btn-danger {
-    -fx-background-color: #5a2626;
-    -fx-text-fill: #ff8080;
+    -fx-background-color: #402020;
+    -fx-text-fill: #ff9999;
 }
 
 .dark .origem-label {
-    -fx-text-fill: #bbbbbb;
+    -fx-text-fill: #CCCCCC;
 }
 
 .dark .fonte-label {
@@ -114,9 +200,67 @@
 }
 
 .dark .status-label {
-    -fx-text-fill: #aaaaaa;
+    -fx-text-fill: #AAAAAA;
 }
 
 .dark .conversation-list .list-cell:selected {
     -fx-background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .brand-label {
+    -fx-text-fill: #EEEEEE;
+}
+
+/* -------- Tela de login / registro (escuro) -------- */
+
+.dark .auth-card {
+    -fx-background-color: #1A1A1A;
+}
+
+.dark .tabs-bar {
+    -fx-background-color: #262626;
+}
+
+.dark .tab-btn {
+    -fx-text-fill: #999999;
+}
+
+.dark .tab-btn.active {
+    -fx-background-color: #EEEEEE;
+    -fx-text-fill: #111111;
+}
+
+.dark .form-title {
+    -fx-text-fill: #EEEEEE;
+}
+
+.dark .form-subtitle {
+    -fx-text-fill: #999999;
+}
+
+.dark .field-label {
+    -fx-text-fill: #CCCCCC;
+}
+
+.dark .text-input {
+    -fx-background-color: #262626;
+    -fx-border-color: #444444;
+    -fx-text-fill: #EEEEEE;
+    -fx-prompt-text-fill: #777777;
+}
+
+.dark .btn-toggle-senha {
+    -fx-text-fill: #777777;
+}
+
+.dark .error-label {
+    -fx-text-fill: #ff8080;
+}
+
+.dark .success-label {
+    -fx-text-fill: #66bb6a;
+}
+
+.dark .link-muted {
+    -fx-text-fill: #999999;
 }

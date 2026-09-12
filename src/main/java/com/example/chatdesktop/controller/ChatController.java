@@ -17,67 +17,119 @@ import java.util.Optional;
 public class ChatController {
 
     private final ChatView view;
+
     private final GroqService groqService;
+
     private final RagService ragService;
+
     private final WebSearchService webSearchService;
+
     private final List<Conversation> conversas;
 
     private Conversation conversaAtual;
+
     private String ultimaPergunta = "";
 
-    private record ContextoResultado(String contexto, String origem, String fonte) {
+    private record ContextoResultado(
+            String contexto,
+            String origem,
+            String fonte
+    ) {
     }
 
     public ChatController(ChatView view) {
 
         this.view = view;
+
         this.groqService = new GroqService();
+
         this.ragService = new RagService();
+
         this.webSearchService = new WebSearchService();
+
         this.conversas = new ArrayList<>();
 
         criarPrimeiraConversa();
+
         configurarEventos();
     }
 
     private void configurarEventos() {
 
-        view.getBotaoEnviar().setOnAction(evento -> enviarMensagem());
-        view.getCampoMensagem().setOnAction(evento -> enviarMensagem());
-        view.setAoNovaConversa(this::novaConversa);
-        view.setAoRegenerar(this::regenerarResposta);
-        view.setAoRenomear(this::renomearConversa);
-        view.setAoExcluir(this::excluirConversa);
-        view.setAoSelecionarConversa(this::selecionarConversa);
+        view.getBotaoEnviar().setOnAction(
+                evento -> enviarMensagem()
+        );
+
+        view.getCampoMensagem().setOnAction(
+                evento -> enviarMensagem()
+        );
+
+        view.setAoNovaConversa(
+                this::novaConversa
+        );
+
+        view.setAoRegenerar(
+                this::regenerarResposta
+        );
+
+        view.setAoRenomear(
+                this::renomearConversa
+        );
+
+        view.setAoExcluir(
+                this::excluirConversa
+        );
+
+        view.setAoSelecionarConversa(
+                this::selecionarConversa
+        );
     }
 
     private void criarPrimeiraConversa() {
 
-        conversaAtual = new Conversation("Nova conversa");
-        conversas.add(conversaAtual);
+        conversaAtual =
+                new Conversation(
+                        "Nova conversa"
+                );
+
+        conversas.add(
+                conversaAtual
+        );
 
         atualizarLista();
+
         view.limparConversa();
 
         view.adicionarMensagemIA(
-                "Olá! Eu sou seu assistente. Digite uma mensagem para começar."
+                "Olá! Eu sou seu assistente. "
+                        + "Digite uma mensagem para começar."
         );
     }
 
     private void novaConversa() {
 
-        conversaAtual = new Conversation("Nova conversa");
-        conversas.add(conversaAtual);
+        conversaAtual =
+                new Conversation(
+                        "Nova conversa"
+                );
+
+        conversas.add(
+                conversaAtual
+        );
+
         ultimaPergunta = "";
 
         atualizarLista();
+
         view.limparConversa();
 
         view.adicionarMensagemIA(
-                "Olá! Eu sou seu assistente. Digite uma mensagem para começar."
+                "Olá! Eu sou seu assistente. "
+                        + "Digite uma mensagem para começar."
         );
 
-        view.getCampoMensagem().requestFocus();
+        view.getCampoMensagem()
+                .requestFocus();
     }
 
     private void enviarMensagem() {
@@ -86,70 +138,122 @@ public class ChatController {
             return;
         }
 
-        String mensagem = view.getCampoMensagem().getText().trim();
+        String mensagem =
+                view.getCampoMensagem()
+                        .getText()
+                        .trim();
 
         if (mensagem.isEmpty()) {
             return;
         }
 
         ultimaPergunta = mensagem;
-        enviarPergunta(mensagem);
+
+        enviarPergunta(
+                mensagem
+        );
     }
 
-    private void enviarPergunta(String mensagem) {
+    private void enviarPergunta(
+            String mensagem
+    ) {
 
         if (conversaAtual == null) {
             return;
         }
 
-        view.adicionarMensagemUsuario(mensagem);
-        view.getCampoMensagem().clear();
+        view.adicionarMensagemUsuario(
+                mensagem
+        );
 
-        conversaAtual.adicionarMensagem(ChatMessage.user(mensagem));
+        view.getCampoMensagem()
+                .clear();
+
+        ChatMessage mensagemUsuario =
+                ChatMessage.user(
+                        mensagem
+                );
+
+        conversaAtual.adicionarMensagem(
+                mensagemUsuario
+        );
 
         view.setCarregando(true);
 
-        final ContextoResultado contextoResultado = obterContexto(mensagem);
+        final ContextoResultado contextoResultado =
+                obterContexto(mensagem);
 
-        final List<ChatMessage> historico = new ArrayList<>(conversaAtual.getMensagens());
-        final Conversation conversaDaRequisicao = conversaAtual;
-
-        Thread thread = new Thread(() -> {
-
-            try {
-
-                String resposta = groqService.enviarMensagem(
-                        historico, contextoResultado.contexto()
+        final List<ChatMessage> historico =
+                new ArrayList<>(
+                        conversaAtual.getMensagens()
                 );
 
-                Platform.runLater(() -> {
+        final Conversation conversaDaRequisicao =
+                conversaAtual;
 
-                    conversaDaRequisicao.adicionarMensagem(ChatMessage.assistant(resposta));
+        Thread thread =
+                new Thread(() -> {
 
-                    view.adicionarMensagemIA(
-                            resposta,
-                            contextoResultado.origem(),
-                            contextoResultado.fonte()
-                    );
+                    try {
 
-                    view.setCarregando(false);
-                    view.getCampoMensagem().requestFocus();
+                        String resposta =
+                                groqService.enviarMensagem(
+                                        historico,
+                                        contextoResultado.contexto()
+                                );
 
-                    atualizarTitulo();
-                    atualizarLista();
+                        Platform.runLater(() -> {
+
+                            ChatMessage mensagemIA =
+                                    ChatMessage.assistant(
+                                            resposta
+                                    );
+
+                            conversaDaRequisicao
+                                    .adicionarMensagem(
+                                            mensagemIA
+                                    );
+
+                            view.adicionarMensagemIA(
+                                    resposta,
+                                    contextoResultado.origem(),
+                                    contextoResultado.fonte()
+                            );
+
+                            view.setCarregando(
+                                    false
+                            );
+
+                            view.getCampoMensagem()
+                                    .requestFocus();
+
+                            atualizarTitulo();
+
+                            atualizarLista();
+                        });
+
+                    } catch (Throwable erro) {
+
+                        Platform.runLater(() -> {
+
+                            view.adicionarErro(
+                                    obterMensagemErro(
+                                            erro
+                                    )
+                            );
+
+                            view.setCarregando(
+                                    false
+                            );
+
+                            view.getCampoMensagem()
+                                    .requestFocus();
+                        });
+                    }
                 });
-
-            } catch (Exception erro) {
-
-                Platform.runLater(() -> {
-                    view.adicionarErro(obterMensagemErro(erro));
-                    view.setCarregando(false);
-                    view.getCampoMensagem().requestFocus();
-                });
-            }
-        });
 
         thread.setDaemon(true);
+
         thread.start();
     }
 
@@ -159,19 +263,36 @@ public class ChatController {
             return;
         }
 
-        if (ultimaPergunta == null || ultimaPergunta.isBlank()) {
+        if (
+                ultimaPergunta == null
+                        ||
+                        ultimaPergunta.isBlank()
+        ) {
             return;
         }
 
-        List<ChatMessage> mensagens = conversaAtual.getMensagens();
+        List<ChatMessage> mensagens =
+                conversaAtual.getMensagens();
 
         if (!mensagens.isEmpty()) {
 
-            int ultimoIndice = mensagens.size() - 1;
-            ChatMessage ultimaMensagem = mensagens.get(ultimoIndice);
+            int ultimoIndice =
+                    mensagens.size() - 1;
 
-            if ("assistant".equals(ultimaMensagem.getRole())) {
-                mensagens.remove(ultimoIndice);
+            ChatMessage ultimaMensagem =
+                    mensagens.get(
+                            ultimoIndice
+                    );
+
+            if (
+                    "assistant".equals(
+                            ultimaMensagem.getRole()
+                    )
+            ) {
+
+                mensagens.remove(
+                        ultimoIndice
+                );
             }
         }
 
@@ -184,48 +305,77 @@ public class ChatController {
             return;
         }
 
-        final String pergunta = ultimaPergunta;
+        final String pergunta =
+                ultimaPergunta;
 
         view.setCarregando(true);
 
-        final ContextoResultado contextoResultado = obterContexto(pergunta);
+        final ContextoResultado contextoResultado =
+                obterContexto(pergunta);
 
-        final List<ChatMessage> historico = new ArrayList<>(conversaAtual.getMensagens());
-        final Conversation conversaDaRequisicao = conversaAtual;
-
-        Thread thread = new Thread(() -> {
-
-            try {
-
-                String resposta = groqService.enviarMensagem(
-                        historico, contextoResultado.contexto()
+        final List<ChatMessage> historico =
+                new ArrayList<>(
+                        conversaAtual.getMensagens()
                 );
 
-                Platform.runLater(() -> {
+        final Conversation conversaDaRequisicao =
+                conversaAtual;
 
-                    conversaDaRequisicao.adicionarMensagem(ChatMessage.assistant(resposta));
+        Thread thread =
+                new Thread(() -> {
 
-                    view.adicionarMensagemIA(
-                            resposta,
-                            contextoResultado.origem(),
-                            contextoResultado.fonte()
-                    );
+                    try {
 
-                    view.setCarregando(false);
-                    view.getCampoMensagem().requestFocus();
-                    atualizarLista();
+                        String resposta =
+                                groqService.enviarMensagem(
+                                        historico,
+                                        contextoResultado.contexto()
+                                );
+
+                        Platform.runLater(() -> {
+
+                            conversaDaRequisicao
+                                    .adicionarMensagem(
+                                            ChatMessage.assistant(
+                                                    resposta
+                                            )
+                                    );
+
+                            view.adicionarMensagemIA(
+                                    resposta,
+                                    contextoResultado.origem(),
+                                    contextoResultado.fonte()
+                            );
+
+                            view.setCarregando(
+                                    false
+                            );
+
+                            view.getCampoMensagem()
+                                    .requestFocus();
+
+                            atualizarLista();
+                        });
+
+                    } catch (Throwable erro) {
+
+                        Platform.runLater(() -> {
+
+                            view.adicionarErro(
+                                    obterMensagemErro(
+                                            erro
+                                    )
+                            );
+
+                            view.setCarregando(
+                                    false
+                            );
+                        });
+                    }
                 });
-
-            } catch (Exception erro) {
-
-                Platform.runLater(() -> {
-                    view.adicionarErro(obterMensagemErro(erro));
-                    view.setCarregando(false);
-                });
-            }
-        });
 
         thread.setDaemon(true);
+
         thread.start();
     }
 
@@ -236,7 +386,9 @@ public class ChatController {
         if (contextoInterno != null && !contextoInterno.isBlank()) {
 
             return new ContextoResultado(
-                    contextoInterno, "RAG Interna", "Base de conhecimento local"
+                    contextoInterno,
+                    "RAG Interna",
+                    "Base de conhecimento local"
             );
         }
 
@@ -245,19 +397,34 @@ public class ChatController {
         if (contextoExterno != null && !contextoExterno.isBlank()) {
 
             return new ContextoResultado(
-                    contextoExterno, "RAG Externa (Web)", "Resultados de busca na web"
+                    contextoExterno,
+                    "RAG Externa (Web)",
+                    "Resultados de busca na web"
             );
         }
 
-        return new ContextoResultado("", "Groq", null);
+        return new ContextoResultado(
+                "",
+                "Groq",
+                null
+        );
     }
 
     private String obterContextoInterno(String pergunta) {
 
         try {
-            return ragService.buscarContexto(pergunta);
+
+            return ragService.buscarContexto(
+                    pergunta
+            );
+
         } catch (Exception erro) {
-            System.err.println("Erro no RAG interno: " + erro.getMessage());
+
+            System.err.println(
+                    "Erro no RAG interno: "
+                            + erro.getMessage()
+            );
+
             return "";
         }
     }
@@ -265,9 +432,18 @@ public class ChatController {
     private String obterContextoExterno(String pergunta) {
 
         try {
-            return webSearchService.buscarContextoExterno(pergunta);
+
+            return webSearchService.buscarContextoExterno(
+                    pergunta
+            );
+
         } catch (Exception erro) {
-            System.err.println("Erro no RAG externo (web): " + erro.getMessage());
+
+            System.err.println(
+                    "Erro no RAG externo (web): "
+                            + erro.getMessage()
+            );
+
             return "";
         }
     }
@@ -278,20 +454,43 @@ public class ChatController {
             return;
         }
 
-        TextInputDialog dialog = new TextInputDialog(conversaAtual.getTitulo());
-        dialog.setTitle("Renomear conversa");
-        dialog.setHeaderText("Digite o novo nome da conversa:");
-        dialog.setContentText("Nome:");
+        TextInputDialog dialog =
+                new TextInputDialog(
+                        conversaAtual.getTitulo()
+                );
 
-        Optional<String> resultado = dialog.showAndWait();
+        dialog.setTitle(
+                "Renomear conversa"
+        );
 
-        resultado.ifPresent(novoNome -> {
+        dialog.setHeaderText(
+                "Digite o novo nome da conversa:"
+        );
 
-            if (novoNome != null && !novoNome.isBlank()) {
-                conversaAtual.setTitulo(novoNome.trim());
-                atualizarLista();
-            }
-        });
+        dialog.setContentText(
+                "Nome:"
+        );
+
+        Optional<String> resultado =
+                dialog.showAndWait();
+
+        resultado.ifPresent(
+                novoNome -> {
+
+                    if (
+                            novoNome != null
+                                    &&
+                                    !novoNome.isBlank()
+                    ) {
+
+                        conversaAtual.setTitulo(
+                                novoNome.trim()
+                        );
+
+                        atualizarLista();
+                    }
+                }
+        );
     }
 
     private void excluirConversa() {
@@ -300,51 +499,90 @@ public class ChatController {
             return;
         }
 
-        boolean confirmou = view.confirmarExclusao(conversaAtual.getTitulo());
+        boolean confirmou =
+                view.confirmarExclusao(
+                        conversaAtual.getTitulo()
+                );
 
         if (!confirmou) {
             return;
         }
 
-        conversas.remove(conversaAtual);
+        conversas.remove(
+                conversaAtual
+        );
 
         if (conversas.isEmpty()) {
+
             criarPrimeiraConversa();
+
             return;
         }
 
-        conversaAtual = conversas.get(conversas.size() - 1);
-        ultimaPergunta = encontrarUltimaPergunta(conversaAtual);
+        conversaAtual =
+                conversas.get(
+                        conversas.size() - 1
+                );
+
+        ultimaPergunta =
+                encontrarUltimaPergunta(
+                        conversaAtual
+                );
 
         atualizarLista();
-        view.carregarConversa(conversaAtual);
+
+        view.carregarConversa(
+                conversaAtual
+        );
     }
 
-    private void selecionarConversa(Conversation conversa) {
+    private void selecionarConversa(
+            Conversation conversa
+    ) {
 
         if (conversa == null) {
             return;
         }
 
-        conversaAtual = conversa;
-        ultimaPergunta = encontrarUltimaPergunta(conversa);
+        conversaAtual =
+                conversa;
 
-        view.carregarConversa(conversa);
+        ultimaPergunta =
+                encontrarUltimaPergunta(
+                        conversa
+                );
+
+        view.carregarConversa(
+                conversa
+        );
     }
 
-    private String encontrarUltimaPergunta(Conversation conversa) {
+    private String encontrarUltimaPergunta(
+            Conversation conversa
+    ) {
 
         if (conversa == null) {
             return "";
         }
 
-        List<ChatMessage> mensagens = conversa.getMensagens();
+        List<ChatMessage> mensagens =
+                conversa.getMensagens();
 
-        for (int i = mensagens.size() - 1; i >= 0; i--) {
+        for (
+                int i = mensagens.size() - 1;
+                i >= 0;
+                i--
+        ) {
 
-            ChatMessage mensagem = mensagens.get(i);
+            ChatMessage mensagem =
+                    mensagens.get(i);
 
-            if ("user".equals(mensagem.getRole())) {
+            if (
+                    "user".equals(
+                            mensagem.getRole()
+                    )
+            ) {
+
                 return mensagem.getContent();
             }
         }
@@ -358,42 +596,77 @@ public class ChatController {
             return;
         }
 
-        if (!"Nova conversa".equals(conversaAtual.getTitulo())) {
+        if (
+                !"Nova conversa".equals(
+                        conversaAtual.getTitulo()
+                )
+        ) {
             return;
         }
 
-        if (ultimaPergunta == null || ultimaPergunta.isBlank()) {
+        if (
+                ultimaPergunta == null
+                        ||
+                        ultimaPergunta.isBlank()
+        ) {
             return;
         }
 
-        String titulo = ultimaPergunta.trim();
+        String titulo =
+                ultimaPergunta.trim();
 
         if (titulo.length() > 25) {
-            titulo = titulo.substring(0, 25) + "...";
+
+            titulo =
+                    titulo.substring(
+                            0,
+                            25
+                    ) + "...";
         }
 
-        conversaAtual.setTitulo(titulo);
+        conversaAtual.setTitulo(
+                titulo
+        );
     }
 
     private void atualizarLista() {
 
-        view.getListaConversas().getItems().setAll(conversas);
+        view.getListaConversas()
+                .getItems()
+                .setAll(
+                        conversas
+                );
 
         if (conversaAtual != null) {
-            view.getListaConversas().getSelectionModel().select(conversaAtual);
+
+            view.getListaConversas()
+                    .getSelectionModel()
+                    .select(
+                            conversaAtual
+                    );
         }
     }
 
-    private String obterMensagemErro(Exception erro) {
+    private String obterMensagemErro(
+            Throwable erro
+    ) {
 
         if (erro == null) {
             return "Erro desconhecido.";
         }
 
-        String mensagem = erro.getMessage();
+        String mensagem =
+                erro.getMessage();
 
-        if (mensagem == null || mensagem.isBlank()) {
-            return erro.getClass().getSimpleName();
+        if (
+                mensagem == null
+                        ||
+                        mensagem.isBlank()
+        ) {
+
+            return erro
+                    .getClass()
+                    .getSimpleName();
         }
 
         return mensagem;

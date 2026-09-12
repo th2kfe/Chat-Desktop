@@ -10,6 +10,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Serviço de RAG externa: busca contexto na web SEM precisar
+ * de chave de API, usando a Instant Answer API do DuckDuckGo
+ * (gratuita, pública, sem cadastro).
+ *
+ * Limitação: não é uma busca completa como Google/Bing — retorna
+ * um resumo (geralmente da Wikipedia) e tópicos relacionados.
+ * Ainda assim, serve bem como fallback quando o RAG interno
+ * não encontra nada relevante.
+ */
 public class WebSearchService {
 
     private final HttpClient httpClient;
@@ -29,6 +39,10 @@ public class WebSearchService {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(urlBusca))
                 .header("Accept", "application/json")
+                .header(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                )
                 .GET()
                 .build();
 
@@ -38,12 +52,20 @@ public class WebSearchService {
         );
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            System.err.println("Erro na busca externa: HTTP " + response.statusCode());
+
+            System.err.println(
+                    "Erro na busca externa: HTTP " + response.statusCode()
+            );
+
             return "";
         }
 
         return montarContexto(response.body());
     }
+
+    // ================================================================
+    // MONTAGEM DO CONTEXTO A PARTIR DA RESPOSTA DO DUCKDUCKGO
+    // ================================================================
 
     private String montarContexto(String json) {
 
@@ -52,8 +74,11 @@ public class WebSearchService {
         }
 
         String heading = extrairValorUnico(json, "Heading");
+
         String abstractText = extrairValorUnico(json, "AbstractText");
+
         String abstractUrl = extrairValorUnico(json, "AbstractURL");
+
         List<String> relacionados = extrairTodosValores(json, "Text");
 
         StringBuilder contexto = new StringBuilder();
@@ -94,6 +119,10 @@ public class WebSearchService {
 
         return contexto.toString();
     }
+
+    // ================================================================
+    // EXTRAÇÃO GENÉRICA DE CAMPOS "campo":"valor" (com escapes)
+    // ================================================================
 
     private String extrairValorUnico(String json, String campo) {
 
