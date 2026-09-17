@@ -62,21 +62,21 @@ public class Main extends Application {
 
         StackPane splash = new StackPane();
 
-        splash.setStyle("-fx-background-color: #0D0D0D;");
+        splash.setStyle("-fx-background-color: #051F20;");
 
         Label titulo = new Label("FAITH IN GOD");
 
         titulo.setStyle(
                 "-fx-font-size: 32px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-text-fill: white;"
+                        "-fx-text-fill: #DAF1DE;"
         );
 
         Label subtitulo = new Label("Carregando...");
 
         subtitulo.setStyle(
                 "-fx-font-size: 13px;" +
-                        "-fx-text-fill: #999999;"
+                        "-fx-text-fill: #8EB69B;"
         );
 
         // Trilha (fundo) da barra de progresso
@@ -87,7 +87,7 @@ public class Main extends Application {
         trilhaBarra.setMaxSize(LARGURA_BARRA, 4);
 
         trilhaBarra.setStyle(
-                "-fx-background-color: #262626;" +
+                "-fx-background-color: #163832;" +
                         "-fx-background-radius: 999;"
         );
 
@@ -99,7 +99,7 @@ public class Main extends Application {
         fillBarra.setMaxSize(0, 4);
 
         fillBarra.setStyle(
-                "-fx-background-color: white;" +
+                "-fx-background-color: #DAF1DE;" +
                         "-fx-background-radius: 999;"
         );
 

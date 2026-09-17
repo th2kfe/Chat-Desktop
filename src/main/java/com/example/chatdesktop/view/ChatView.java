@@ -1,49 +1,77 @@
 package com.example.chatdesktop.view;
 
 import com.example.chatdesktop.model.Conversation;
+
+import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.RadialGradient;
+import javafx.scene.paint.Stop;
+import javafx.scene.shape.Circle;
 
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class ChatView {
 
     private final BorderPane root;
 
-    private final TextArea areaChat;
+    // ---- SIDEBAR ----
+    private final TextField campoBusca;
 
-    private final TextField campoMensagem;
+    private final ListView<Conversation> listaConversas;
 
-    private final Button botaoEnviar;
+    private List<Conversation> ultimaListaCompleta = new ArrayList<>();
+
+    private boolean aplicandoFiltro = false;
 
     private final Button botaoNovaConversa;
 
-    private final Button botaoCopiar;
-
-    private final Button botaoRegenerar;
+    // ---- HEADER ----
+    private final Button botaoTema;
 
     private final Button botaoRenomear;
 
     private final Button botaoExcluir;
 
-    private final Button botaoTema;
+    private boolean temaEscuro = false;
 
-    private final Label status;
+    // ---- ÁREA DE MENSAGENS ----
+    private final VBox mensagensBox;
 
+    private final ScrollPane scrollMensagens;
+
+    private final VBox estadoVazio;
+
+    // ---- CAPTION / STATUS ----
     private final Label origemResposta;
 
     private final Label fonteResposta;
 
-    private final ListView<Conversation> listaConversas;
+    private final Label status;
+
+    // ---- BARRA DE ENTRADA ----
+    private final TextField campoMensagem;
+
+    private final Button botaoCopiar;
+
+    private final Button botaoRegenerar;
+
+    private final Button botaoEnviar;
+
+    // ---- COMPATIBILIDADE DE API (não exibido na tela) ----
+    private final TextArea areaChatOculta = new TextArea();
 
     private String ultimaRespostaIA = "";
-
-    private boolean temaEscuro = false;
 
     private Consumer<Conversation> aoSelecionarConversa;
 
@@ -62,77 +90,104 @@ public class ChatView {
         root.getStyleClass().add("app-root");
 
         root.getStylesheets().add(
-                Objects.requireNonNull(
-                        getClass().getResource(
-                                "/com/example/chatdesktop/css/chat.css"
-                        )
+                getClass().getResource(
+                        "/com/example/chatdesktop/css/chat.css"
                 ).toExternalForm()
         );
 
-        Label tituloHistorico = new Label("Conversas");
+        // ============================================================
+        // SIDEBAR
+        // ============================================================
 
-        tituloHistorico.getStyleClass().add("sidebar-title");
+        Label marca = new Label("FAITH IN GOD");
 
-        tituloHistorico.setStyle(
-                "-fx-font-size: 18px;" +
+        marca.getStyleClass().add("brand-label");
+
+        marca.setStyle(
+                "-fx-font-size: 16px;" +
                         "-fx-font-weight: bold;"
         );
 
-        botaoNovaConversa = new Button("＋ Nova conversa");
+        campoBusca = new TextField();
 
-        botaoNovaConversa.getStyleClass().add("btn-light");
+        campoBusca.setPromptText("Buscar conversas...");
+
+        campoBusca.getStyleClass().add("search-input");
+
+        campoBusca.textProperty().addListener(
+                (obs, valorAntigo, valorNovo) -> aplicarFiltroBusca(valorNovo)
+        );
+
+        botaoNovaConversa = new Button("+ Nova conversa");
+
+        botaoNovaConversa.getStyleClass().add("btn-primary");
 
         botaoNovaConversa.setMaxWidth(Double.MAX_VALUE);
 
-        botaoNovaConversa.setPrefHeight(40);
-
         botaoNovaConversa.setStyle(
                 "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8;"
+                        "-fx-background-radius: 10;"
         );
 
         listaConversas = new ListView<>();
 
         listaConversas.getStyleClass().add("conversation-list");
 
-        listaConversas.setCellFactory(list -> new ConversationCell());
-
-        listaConversas.setStyle("-fx-background-color: transparent;");
-
-        listaConversas.setOnMouseClicked(evento -> {
-
-            Conversation conversa =
-                    listaConversas.getSelectionModel().getSelectedItem();
-
-            if (conversa != null && aoSelecionarConversa != null) {
-                aoSelecionarConversa.accept(conversa);
-            }
-        });
-
-        VBox barraLateral = new VBox(
-                15, tituloHistorico, botaoNovaConversa, listaConversas
+        listaConversas.setCellFactory(
+                lista -> new ConversationCell()
         );
 
-        barraLateral.getStyleClass().add("sidebar");
+        listaConversas.setStyle(
+                "-fx-background-color: transparent;"
+        );
 
-        barraLateral.setPadding(new Insets(15));
+        listaConversas.getItems().addListener(
+                (ListChangeListener<Conversation>) mudanca -> {
 
-        barraLateral.setPrefWidth(230);
+                    if (!aplicandoFiltro) {
+
+                        ultimaListaCompleta =
+                                new ArrayList<>(
+                                        listaConversas.getItems()
+                                );
+                    }
+                }
+        );
+
+        listaConversas.setOnMouseClicked(
+                evento -> {
+
+                    Conversation conversa =
+                            listaConversas
+                                    .getSelectionModel()
+                                    .getSelectedItem();
+
+                    if (conversa != null && aoSelecionarConversa != null) {
+
+                        aoSelecionarConversa.accept(conversa);
+                    }
+                }
+        );
 
         VBox.setVgrow(listaConversas, Priority.ALWAYS);
 
-        Label titulo = new Label(
-                "FAITH IN GOD"
+        VBox sidebar = new VBox(
+                14, marca, campoBusca, botaoNovaConversa, listaConversas
         );
 
-        titulo.getStyleClass().add("header-title");
+        sidebar.getStyleClass().add("sidebar");
 
-        titulo.setStyle(
-                "-fx-font-size: 24px;" +
-                        "-fx-font-weight: bold;"
-        );
+        sidebar.setPadding(new Insets(18));
 
-        botaoTema = new Button("🌙 Escuro");
+        sidebar.setPrefWidth(240);
+
+        root.setLeft(sidebar);
+
+        // ============================================================
+        // HEADER (barra superior minimalista)
+        // ============================================================
+
+        botaoTema = new Button("Escuro");
 
         botaoTema.getStyleClass().add("btn-light");
 
@@ -140,13 +195,13 @@ public class ChatView {
 
         botaoTema.setOnAction(evento -> alternarTema());
 
-        botaoRenomear = new Button("✏ Renomear");
+        botaoRenomear = new Button("Renomear");
 
         botaoRenomear.getStyleClass().add("btn-light");
 
         botaoRenomear.setStyle("-fx-background-radius: 8;");
 
-        botaoExcluir = new Button("🗑 Excluir");
+        botaoExcluir = new Button("Excluir");
 
         botaoExcluir.getStyleClass().add("btn-danger");
 
@@ -155,153 +210,421 @@ public class ChatView {
                         "-fx-background-radius: 8;"
         );
 
-        HBox cabecalho = new HBox(
-                10, titulo, botaoTema, botaoRenomear, botaoExcluir
+        Region espacoHeader = new Region();
+
+        HBox.setHgrow(espacoHeader, Priority.ALWAYS);
+
+        HBox header = new HBox(
+                10, espacoHeader, botaoTema, botaoRenomear, botaoExcluir
         );
 
-        cabecalho.getStyleClass().add("header");
+        header.getStyleClass().add("header-flat");
 
-        cabecalho.setAlignment(Pos.CENTER_LEFT);
+        header.setAlignment(Pos.CENTER_RIGHT);
 
-        cabecalho.setPadding(new Insets(15));
+        header.setPadding(new Insets(16, 20, 0, 20));
 
-        HBox.setHgrow(titulo, Priority.ALWAYS);
+        root.setTop(header);
 
-        areaChat = new TextArea();
+        // ============================================================
+        // ÁREA DE MENSAGENS (bolhas)
+        // ============================================================
 
-        areaChat.getStyleClass().add("chat-area");
+        mensagensBox = new VBox(14);
 
-        areaChat.setEditable(false);
+        mensagensBox.setPadding(new Insets(10, 30, 10, 30));
 
-        areaChat.setWrapText(true);
-
-        areaChat.setStyle("-fx-font-size: 15px;");
-
-        areaChat.setText(
-                "IA: Olá! Eu sou seu assistente. " +
-                        "Digite uma mensagem para começar.\n\n"
+        mensagensBox.getChildren().addListener(
+                (ListChangeListener<Node>) mudanca -> atualizarEstadoVazio()
         );
 
-        origemResposta = new Label("Origem: -");
+        scrollMensagens = new ScrollPane(mensagensBox);
+
+        scrollMensagens.setFitToWidth(true);
+
+        scrollMensagens.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-background: transparent;"
+        );
+
+        // ============================================================
+        // CAPTION DE ORIGEM / STATUS
+        // ============================================================
+
+        origemResposta = new Label("");
 
         origemResposta.getStyleClass().add("origem-label");
 
         origemResposta.setStyle(
-                "-fx-font-size: 12px;" +
+                "-fx-font-size: 11px;" +
                         "-fx-font-weight: bold;"
         );
 
-        fonteResposta = new Label("Fonte: -");
+        fonteResposta = new Label("");
 
         fonteResposta.getStyleClass().add("fonte-label");
 
-        fonteResposta.setStyle("-fx-font-size: 12px;");
-
-        HBox informacoesResposta = new HBox(15, origemResposta, fonteResposta);
+        fonteResposta.setStyle("-fx-font-size: 11px;");
 
         status = new Label();
 
         status.getStyleClass().add("status-label");
 
-        status.setStyle("-fx-font-size: 12px;");
+        status.setStyle("-fx-font-size: 11px;");
+
+        HBox linhaCaption = new HBox(
+                14, origemResposta, fonteResposta, status
+        );
+
+        linhaCaption.setPadding(new Insets(0, 30, 4, 30));
+
+        // ============================================================
+        // BARRA DE ENTRADA
+        // ============================================================
 
         campoMensagem = new TextField();
 
         campoMensagem.setPromptText("Digite sua mensagem...");
 
-        campoMensagem.setPrefHeight(42);
+        campoMensagem.getStyleClass().add("text-input");
 
-        botaoCopiar = new Button("📋 Copiar");
+        campoMensagem.setPrefHeight(46);
+
+        HBox.setHgrow(campoMensagem, Priority.ALWAYS);
+
+        botaoCopiar = new Button("Copiar");
 
         botaoCopiar.getStyleClass().add("btn-secondary");
 
-        botaoCopiar.setPrefHeight(42);
-
-        botaoCopiar.setPrefWidth(100);
+        botaoCopiar.setPrefHeight(46);
 
         botaoCopiar.setDisable(true);
 
         botaoCopiar.setStyle(
                 "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8;"
+                        "-fx-background-radius: 10;"
         );
 
         botaoCopiar.setOnAction(evento -> copiarRespostaIA());
 
-        botaoRegenerar = new Button("🔄 Regenerar");
+        botaoRegenerar = new Button("Regenerar");
 
         botaoRegenerar.getStyleClass().add("btn-secondary");
 
-        botaoRegenerar.setPrefHeight(42);
-
-        botaoRegenerar.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8;"
-        );
+        botaoRegenerar.setPrefHeight(46);
 
         botaoRegenerar.setDisable(true);
 
-        botaoRegenerar.setOnAction(evento -> {
-            if (aoRegenerar != null) {
-                aoRegenerar.run();
-            }
-        });
+        botaoRegenerar.setStyle(
+                "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 10;"
+        );
+
+        botaoRegenerar.setOnAction(
+                evento -> {
+
+                    if (aoRegenerar != null) {
+
+                        aoRegenerar.run();
+                    }
+                }
+        );
 
         botaoEnviar = new Button("Enviar");
 
         botaoEnviar.getStyleClass().add("btn-primary");
 
-        botaoEnviar.setPrefHeight(42);
+        botaoEnviar.setPrefHeight(46);
 
-        botaoEnviar.setPrefWidth(90);
+        botaoEnviar.setPrefWidth(100);
 
         botaoEnviar.setStyle(
                 "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8;"
+                        "-fx-background-radius: 10;"
         );
 
-        HBox entrada = new HBox(
+        HBox barraEntrada = new HBox(
                 10, campoMensagem, botaoRegenerar, botaoCopiar, botaoEnviar
         );
 
-        entrada.setAlignment(Pos.CENTER);
+        barraEntrada.setAlignment(Pos.CENTER);
 
-        HBox.setHgrow(campoMensagem, Priority.ALWAYS);
+        barraEntrada.getStyleClass().add("input-bar");
 
-        VBox rodape = new VBox(6, informacoesResposta, status, entrada);
+        barraEntrada.setPadding(new Insets(14, 20, 20, 20));
 
-        rodape.setPadding(new Insets(10, 0, 0, 0));
+        VBox rodape = new VBox(6, linhaCaption, barraEntrada);
 
-        VBox conteudo = new VBox(10, areaChat, rodape);
+        // ============================================================
+        // ESTADO VAZIO (tela de boas-vindas)
+        // ============================================================
 
-        conteudo.setPadding(new Insets(15));
+        estadoVazio = criarEstadoVazio();
 
-        VBox.setVgrow(areaChat, Priority.ALWAYS);
+        StackPane areaConteudo = new StackPane(scrollMensagens, estadoVazio);
 
-        root.setLeft(barraLateral);
+        VBox centro = new VBox(areaConteudo, rodape);
 
-        root.setTop(cabecalho);
+        VBox.setVgrow(areaConteudo, Priority.ALWAYS);
 
-        root.setCenter(conteudo);
+        root.setCenter(centro);
 
-        botaoNovaConversa.setOnAction(evento -> {
-            if (aoNovaConversa != null) {
-                aoNovaConversa.run();
-            }
-        });
+        // ============================================================
+        // EVENTOS DE BOTÕES
+        // ============================================================
 
-        botaoRenomear.setOnAction(evento -> {
-            if (aoRenomear != null) {
-                aoRenomear.run();
-            }
-        });
+        botaoNovaConversa.setOnAction(
+                evento -> {
 
-        botaoExcluir.setOnAction(evento -> {
-            if (aoExcluir != null) {
-                aoExcluir.run();
-            }
-        });
+                    if (aoNovaConversa != null) {
+
+                        aoNovaConversa.run();
+                    }
+                }
+        );
+
+        botaoRenomear.setOnAction(
+                evento -> {
+
+                    if (aoRenomear != null) {
+
+                        aoRenomear.run();
+                    }
+                }
+        );
+
+        botaoExcluir.setOnAction(
+                evento -> {
+
+                    if (aoExcluir != null) {
+
+                        aoExcluir.run();
+                    }
+                }
+        );
+
+        atualizarEstadoVazio();
     }
+
+    // ================================================================
+    // TELA DE BOAS-VINDAS (orbe + sugestões)
+    // ================================================================
+
+    private VBox criarEstadoVazio() {
+
+        Circle orbe = new Circle(46);
+
+        RadialGradient gradiente = new RadialGradient(
+                0, 0, 0.5, 0.5, 0.6, true, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.web("#DAF1DE")),
+                new Stop(0.5, Color.web("#8EB69B")),
+                new Stop(1, Color.web("#163832"))
+        );
+
+        orbe.setFill(gradiente);
+
+        Label titulo = new Label("Como posso te ajudar hoje?");
+
+        titulo.getStyleClass().add("empty-title");
+
+        titulo.setStyle(
+                "-fx-font-size: 24px;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label subtitulo = new Label(
+                "Pergunte algo, ou escolha uma sugestão abaixo."
+        );
+
+        subtitulo.getStyleClass().add("empty-subtitle");
+
+        subtitulo.setStyle("-fx-font-size: 13px;");
+
+        HBox cartoes = new HBox(
+                14,
+                criarCartaoSugestao(
+                        "Resumir conhecimento",
+                        "Peça um resumo dos documentos da base local.",
+                        "Resuma o conteúdo mais importante da minha base de conhecimento."
+                ),
+                criarCartaoSugestao(
+                        "Pesquisar na web",
+                        "A IA busca informações atuais automaticamente.",
+                        "Pesquise informações atuais sobre "
+                ),
+                criarCartaoSugestao(
+                        "Só conversar",
+                        "Comece um bate-papo qualquer.",
+                        "Como você está hoje?"
+                )
+        );
+
+        cartoes.setAlignment(Pos.CENTER);
+
+        VBox caixa = new VBox(18, orbe, titulo, subtitulo, cartoes);
+
+        caixa.setAlignment(Pos.CENTER);
+
+        caixa.setMaxWidth(680);
+
+        return caixa;
+    }
+
+    private VBox criarCartaoSugestao(
+            String titulo,
+            String descricao,
+            String promptSugerido
+    ) {
+
+        Label tituloLabel = new Label(titulo);
+
+        tituloLabel.getStyleClass().add("suggestion-card-title");
+
+        tituloLabel.setStyle(
+                "-fx-font-weight: bold;" +
+                        "-fx-font-size: 13px;"
+        );
+
+        tituloLabel.setWrapText(true);
+
+        Label descLabel = new Label(descricao);
+
+        descLabel.getStyleClass().add("suggestion-card-desc");
+
+        descLabel.setStyle("-fx-font-size: 11px;");
+
+        descLabel.setWrapText(true);
+
+        VBox cartao = new VBox(6, tituloLabel, descLabel);
+
+        cartao.getStyleClass().add("suggestion-card");
+
+        cartao.setPadding(new Insets(14));
+
+        cartao.setPrefWidth(190);
+
+        cartao.setMaxWidth(190);
+
+        cartao.setStyle("-fx-cursor: hand;");
+
+        cartao.setOnMouseClicked(
+                evento -> {
+
+                    campoMensagem.setText(promptSugerido);
+
+                    campoMensagem.requestFocus();
+
+                    campoMensagem.positionCaret(
+                            promptSugerido.length()
+                    );
+                }
+        );
+
+        return cartao;
+    }
+
+    // ================================================================
+    // BOLHAS DE MENSAGEM
+    // ================================================================
+
+    private void adicionarBolha(String texto, boolean doUsuario) {
+
+        Label textoLabel = new Label(texto);
+
+        textoLabel.setWrapText(true);
+
+        textoLabel.setMaxWidth(480);
+
+        textoLabel.getStyleClass().add(
+                doUsuario ? "bubble-user-text" : "bubble-ai-text"
+        );
+
+        HBox linha = new HBox(textoLabel);
+
+        linha.setAlignment(
+                doUsuario ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT
+        );
+
+        mensagensBox.getChildren().add(linha);
+
+        rolarParaBaixo();
+    }
+
+    private void adicionarBolhaErro(String texto) {
+
+        Label textoLabel = new Label(texto);
+
+        textoLabel.setWrapText(true);
+
+        textoLabel.setMaxWidth(480);
+
+        textoLabel.getStyleClass().add("bubble-error");
+
+        HBox linha = new HBox(textoLabel);
+
+        linha.setAlignment(Pos.CENTER_LEFT);
+
+        mensagensBox.getChildren().add(linha);
+
+        rolarParaBaixo();
+    }
+
+    private void rolarParaBaixo() {
+
+        scrollMensagens.layout();
+
+        scrollMensagens.setVvalue(1.0);
+    }
+
+    // ================================================================
+    // ESTADO VAZIO x LISTA DE MENSAGENS
+    // ================================================================
+
+    private void atualizarEstadoVazio() {
+
+        boolean vazio = mensagensBox.getChildren().size() <= 1;
+
+        estadoVazio.setVisible(vazio);
+
+        estadoVazio.setManaged(vazio);
+
+        scrollMensagens.setVisible(!vazio);
+
+        scrollMensagens.setManaged(!vazio);
+    }
+
+    // ================================================================
+    // BUSCA
+    // ================================================================
+
+    private void aplicarFiltroBusca(String termo) {
+
+        aplicandoFiltro = true;
+
+        String valor = termo == null ? "" : termo.trim().toLowerCase();
+
+        if (valor.isEmpty()) {
+
+            listaConversas.getItems().setAll(ultimaListaCompleta);
+
+        } else {
+
+            List<Conversation> filtradas = ultimaListaCompleta.stream()
+                    .filter(
+                            c -> c.getTitulo() != null
+                                    && c.getTitulo().toLowerCase().contains(valor)
+                    )
+                    .collect(Collectors.toList());
+
+            listaConversas.getItems().setAll(filtradas);
+        }
+
+        aplicandoFiltro = false;
+    }
+
+    // ================================================================
+    // TEMA CLARO / ESCURO
+    // ================================================================
 
     private void alternarTema() {
 
@@ -311,19 +634,23 @@ public class ChatView {
 
             root.getStyleClass().add("dark");
 
-            botaoTema.setText("☀ Claro");
+            botaoTema.setText("Claro");
 
         } else {
 
             root.getStyleClass().remove("dark");
 
-            botaoTema.setText("🌙 Escuro");
+            botaoTema.setText("Escuro");
         }
     }
 
     public boolean isTemaEscuro() {
         return temaEscuro;
     }
+
+    // ================================================================
+    // CALLBACKS
+    // ================================================================
 
     public void setAoSelecionarConversa(Consumer<Conversation> callback) {
         aoSelecionarConversa = callback;
@@ -345,12 +672,16 @@ public class ChatView {
         aoExcluir = callback;
     }
 
+    // ================================================================
+    // GETTERS
+    // ================================================================
+
     public BorderPane getRoot() {
         return root;
     }
 
     public TextArea getAreaChat() {
-        return areaChat;
+        return areaChatOculta;
     }
 
     public TextField getCampoMensagem() {
@@ -377,11 +708,13 @@ public class ChatView {
         return listaConversas;
     }
 
+    // ================================================================
+    // MENSAGENS (API usada pelo ChatController)
+    // ================================================================
+
     public void adicionarMensagemUsuario(String mensagem) {
 
-        areaChat.appendText("Você:\n" + mensagem + "\n\n");
-
-        rolarParaBaixo();
+        adicionarBolha(mensagem, true);
     }
 
     public void adicionarMensagemIA(String mensagem) {
@@ -389,7 +722,11 @@ public class ChatView {
         adicionarMensagemIA(mensagem, "Fallback local", null);
     }
 
-    public void adicionarMensagemIA(String mensagem, String origem, String fonte) {
+    public void adicionarMensagemIA(
+            String mensagem,
+            String origem,
+            String fonte
+    ) {
 
         ultimaRespostaIA = mensagem;
 
@@ -397,39 +734,32 @@ public class ChatView {
 
         botaoRegenerar.setDisable(false);
 
-        areaChat.appendText("IA:\n" + mensagem + "\n\n");
+        adicionarBolha(mensagem, false);
 
-        origemResposta.setText("Origem: " + origem);
+        origemResposta.setText(
+                origem == null || origem.isBlank() ? "" : "Origem: " + origem
+        );
 
         if (fonte == null || fonte.isBlank()) {
-            fonteResposta.setText("Fonte: -");
+
+            fonteResposta.setText("");
+
         } else {
+
             fonteResposta.setText("Fonte: " + fonte);
         }
-
-        rolarParaBaixo();
     }
 
-    private void copiarRespostaIA() {
+    public void adicionarErro(String mensagem) {
 
-        if (ultimaRespostaIA == null || ultimaRespostaIA.isBlank()) {
-            return;
-        }
+        adicionarBolhaErro(mensagem);
 
-        Clipboard clipboard = Clipboard.getSystemClipboard();
-
-        ClipboardContent content = new ClipboardContent();
-
-        content.putString(ultimaRespostaIA);
-
-        clipboard.setContent(content);
-
-        status.setText("Resposta copiada!");
+        status.setText("Ocorreu um erro.");
     }
 
-    public void carregarConversa(Conversation conversa) {
+    public void limparConversa() {
 
-        areaChat.clear();
+        mensagensBox.getChildren().clear();
 
         ultimaRespostaIA = "";
 
@@ -437,19 +767,36 @@ public class ChatView {
 
         botaoRegenerar.setDisable(true);
 
-        origemResposta.setText("Origem: -");
+        origemResposta.setText("");
 
-        fonteResposta.setText("Fonte: -");
+        fonteResposta.setText("");
+
+        status.setText("");
+    }
+
+    public void carregarConversa(Conversation conversa) {
+
+        mensagensBox.getChildren().clear();
+
+        ultimaRespostaIA = "";
+
+        botaoCopiar.setDisable(true);
+
+        botaoRegenerar.setDisable(true);
+
+        origemResposta.setText("");
+
+        fonteResposta.setText("");
 
         for (var mensagem : conversa.getMensagens()) {
 
-            if (mensagem.getRole().equals("user")) {
+            if ("user".equals(mensagem.getRole())) {
 
-                areaChat.appendText("Você:\n" + mensagem.getContent() + "\n\n");
+                adicionarBolha(mensagem.getContent(), true);
 
-            } else if (mensagem.getRole().equals("assistant")) {
+            } else if ("assistant".equals(mensagem.getRole())) {
 
-                areaChat.appendText("IA:\n" + mensagem.getContent() + "\n\n");
+                adicionarBolha(mensagem.getContent(), false);
 
                 ultimaRespostaIA = mensagem.getContent();
 
@@ -458,25 +805,25 @@ public class ChatView {
                 botaoRegenerar.setDisable(false);
             }
         }
-
-        rolarParaBaixo();
     }
 
-    public void limparConversa() {
+    public void setCarregando(boolean carregando) {
 
-        areaChat.clear();
+        botaoEnviar.setDisable(carregando);
 
-        ultimaRespostaIA = "";
+        campoMensagem.setDisable(carregando);
 
-        botaoCopiar.setDisable(true);
+        botaoNovaConversa.setDisable(false);
 
-        botaoRegenerar.setDisable(true);
+        botaoCopiar.setDisable(
+                carregando || ultimaRespostaIA == null || ultimaRespostaIA.isBlank()
+        );
 
-        origemResposta.setText("Origem: -");
+        botaoRegenerar.setDisable(
+                carregando || ultimaRespostaIA == null || ultimaRespostaIA.isBlank()
+        );
 
-        fonteResposta.setText("Fonte: -");
-
-        status.setText("");
+        status.setText(carregando ? "A IA está pensando..." : "");
     }
 
     public boolean confirmarExclusao(String titulo) {
@@ -496,10 +843,26 @@ public class ChatView {
                 .isPresent();
     }
 
-    private void rolarParaBaixo() {
+    private void copiarRespostaIA() {
 
-        areaChat.positionCaret(areaChat.getLength());
+        if (ultimaRespostaIA == null || ultimaRespostaIA.isBlank()) {
+            return;
+        }
+
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+
+        ClipboardContent content = new ClipboardContent();
+
+        content.putString(ultimaRespostaIA);
+
+        clipboard.setContent(content);
+
+        status.setText("Resposta copiada!");
     }
+
+    // ================================================================
+    // CÉLULA DO HISTÓRICO
+    // ================================================================
 
     private class ConversationCell extends ListCell<Conversation> {
 
@@ -525,17 +888,19 @@ public class ChatView {
                             "-fx-font-size: 16px;"
             );
 
-            excluir.setOnAction(evento -> {
+            excluir.setOnAction(
+                    evento -> {
 
-                Conversation conversa = getItem();
+                        Conversation conversa = getItem();
 
-                if (conversa != null && aoExcluir != null) {
+                        if (conversa != null && aoExcluir != null) {
 
-                    getListView().getSelectionModel().select(conversa);
+                            getListView().getSelectionModel().select(conversa);
 
-                    aoExcluir.run();
-                }
-            });
+                            aoExcluir.run();
+                        }
+                    }
+            );
 
             caixa = new HBox(5, titulo, excluir);
 
@@ -560,37 +925,5 @@ public class ChatView {
                 setGraphic(caixa);
             }
         }
-    }
-
-    public void setCarregando(boolean carregando) {
-
-        botaoEnviar.setDisable(carregando);
-
-        campoMensagem.setDisable(carregando);
-
-        botaoNovaConversa.setDisable(false);
-
-        botaoCopiar.setDisable(
-                carregando || ultimaRespostaIA == null || ultimaRespostaIA.isBlank()
-        );
-
-        botaoRegenerar.setDisable(
-                carregando || ultimaRespostaIA == null || ultimaRespostaIA.isBlank()
-        );
-
-        if (carregando) {
-            status.setText("A IA está pensando...");
-        } else {
-            status.setText("");
-        }
-    }
-
-    public void adicionarErro(String mensagem) {
-
-        areaChat.appendText("Erro:\n" + mensagem + "\n\n");
-
-        status.setText("Ocorreu um erro.");
-
-        rolarParaBaixo();
     }
 }

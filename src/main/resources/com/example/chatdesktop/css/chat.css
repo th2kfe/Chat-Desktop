@@ -1,44 +1,47 @@
 /* ============================================================
-   TEMA CLARO (padrão) — Preto e Branco
+   PALETA (referência):
+   #051F20  verde mais escuro
+   #0B2B26
+   #163832
+   #235347
+   #8EB69B  verde médio/claro
+   #DAF1DE  verde mais claro
+   ============================================================ */
+
+/* ============================================================
+   TEMA CLARO (padrão)
    ============================================================ */
 
 .app-root {
-    -fx-background-color: #F5F5F5;
+    -fx-background-color: #DAF1DE;
 }
 
 .sidebar {
-    -fx-background-color: #111111;
+    -fx-background-color: #163832;
 }
 
-.header {
-    -fx-background-color: #1A1A1A;
+.header-flat {
+    -fx-background-color: transparent;
 }
 
-.chat-area {
-    -fx-control-inner-background: #ffffff;
-    -fx-background-color: #ffffff;
-    -fx-border-color: #DDDDDD;
-    -fx-text-fill: #111111;
-}
-
-.sidebar-title,
-.header-title {
-    -fx-text-fill: white;
+.brand-label,
+.sidebar-title {
+    -fx-text-fill: #DAF1DE;
 }
 
 .btn-light {
     -fx-background-color: #ffffff;
-    -fx-text-fill: #111111;
+    -fx-text-fill: #0B2B26;
 }
 
 .btn-secondary {
-    -fx-background-color: #EEEEEE;
-    -fx-text-fill: #111111;
+    -fx-background-color: #EAF7EF;
+    -fx-text-fill: #0B2B26;
 }
 
 .btn-primary {
-    -fx-background-color: #111111;
-    -fx-text-fill: white;
+    -fx-background-color: #163832;
+    -fx-text-fill: #DAF1DE;
 }
 
 .btn-danger {
@@ -47,25 +50,100 @@
 }
 
 .origem-label {
-    -fx-text-fill: #333333;
+    -fx-text-fill: #235347;
 }
 
 .fonte-label {
-    -fx-text-fill: #777777;
+    -fx-text-fill: #4d7a6c;
 }
 
 .status-label {
-    -fx-text-fill: #666666;
+    -fx-text-fill: #5b7a6c;
 }
 
 .conversation-list .list-cell:selected {
     -fx-background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* -------- Marca (tela de login) -------- */
+.search-input {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-background-radius: 8;
+    -fx-border-color: #8EB69B;
+    -fx-border-radius: 8;
+    -fx-padding: 8;
+    -fx-font-size: 12px;
+    -fx-text-fill: #0B2B26;
+    -fx-prompt-text-fill: #7a9c8c;
+}
 
-.brand-label {
-    -fx-text-fill: #111111;
+/* -------- Bolhas de chat -------- */
+
+.bubble-ai-text {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #8EB69B;
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-padding: 12 16 12 16;
+    -fx-text-fill: #0B2B26;
+    -fx-font-size: 13px;
+}
+
+.bubble-user-text {
+    -fx-background-color: #235347;
+    -fx-background-radius: 16;
+    -fx-padding: 12 16 12 16;
+    -fx-text-fill: #DAF1DE;
+    -fx-font-size: 13px;
+}
+
+.bubble-error {
+    -fx-background-color: #ffe5e5;
+    -fx-background-radius: 16;
+    -fx-padding: 12 16 12 16;
+    -fx-text-fill: #b00000;
+    -fx-font-size: 13px;
+}
+
+/* -------- Tela de boas-vindas -------- */
+
+.empty-title {
+    -fx-text-fill: #0B2B26;
+}
+
+.empty-subtitle {
+    -fx-text-fill: #4d7a6c;
+}
+
+.suggestion-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #8EB69B;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+}
+
+.suggestion-card-title {
+    -fx-text-fill: #0B2B26;
+}
+
+.suggestion-card-desc {
+    -fx-text-fill: #5b7a6c;
+}
+
+/* -------- Barra de entrada -------- */
+
+.input-bar {
+    -fx-background-color: transparent;
+}
+
+.text-input {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10;
+    -fx-border-color: #8EB69B;
+    -fx-border-radius: 10;
+    -fx-padding: 10;
+    -fx-font-size: 13px;
+    -fx-text-fill: #0B2B26;
+    -fx-prompt-text-fill: #9db8ab;
 }
 
 /* -------- Tela de login / registro -------- */
@@ -73,18 +151,18 @@
 .auth-card {
     -fx-background-color: white;
     -fx-background-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 24, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, rgba(5,31,32,0.20), 24, 0, 0, 8);
 }
 
 .tabs-bar {
-    -fx-background-color: #EEEEEE;
+    -fx-background-color: #EAF7EF;
     -fx-background-radius: 999;
     -fx-padding: 4;
 }
 
 .tab-btn {
     -fx-background-color: transparent;
-    -fx-text-fill: #666666;
+    -fx-text-fill: #4d7a6c;
     -fx-font-weight: bold;
     -fx-background-radius: 999;
     -fx-padding: 8 0 8 0;
@@ -92,42 +170,31 @@
 }
 
 .tab-btn.active {
-    -fx-background-color: #111111;
-    -fx-text-fill: white;
+    -fx-background-color: #163832;
+    -fx-text-fill: #DAF1DE;
 }
 
 .form-title {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
-    -fx-text-fill: #111111;
+    -fx-text-fill: #0B2B26;
 }
 
 .form-subtitle {
     -fx-font-size: 13px;
-    -fx-text-fill: #777777;
+    -fx-text-fill: #4d7a6c;
 }
 
 .field-label {
     -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: #333333;
-}
-
-.text-input {
-    -fx-background-color: white;
-    -fx-background-radius: 8;
-    -fx-border-color: #DDDDDD;
-    -fx-border-radius: 8;
-    -fx-padding: 10;
-    -fx-font-size: 13px;
-    -fx-text-fill: #111111;
-    -fx-prompt-text-fill: #aaaaaa;
+    -fx-text-fill: #235347;
 }
 
 .btn-toggle-senha {
     -fx-background-color: transparent;
     -fx-cursor: hand;
-    -fx-text-fill: #999999;
+    -fx-text-fill: #7a9c8c;
 }
 
 .error-label {
@@ -144,46 +211,44 @@
 }
 
 .link-muted {
-    -fx-text-fill: #777777;
+    -fx-text-fill: #4d7a6c;
     -fx-cursor: hand;
 }
 
 /* ============================================================
-   TEMA ESCURO (classe "dark" no root) — Preto e Branco
+   TEMA ESCURO (classe "dark" no root)
    ============================================================ */
 
 .dark.app-root {
-    -fx-background-color: #0D0D0D;
+    -fx-background-color: #051F20;
 }
 
 .dark .sidebar {
-    -fx-background-color: #000000;
+    -fx-background-color: #0B2B26;
 }
 
-.dark .header {
-    -fx-background-color: #141414;
+.dark .header-flat {
+    -fx-background-color: transparent;
 }
 
-.dark .chat-area {
-    -fx-control-inner-background: #1A1A1A;
-    -fx-background-color: #1A1A1A;
-    -fx-border-color: #333333;
-    -fx-text-fill: #EEEEEE;
+.dark .brand-label,
+.dark .sidebar-title {
+    -fx-text-fill: #DAF1DE;
 }
 
 .dark .btn-light {
-    -fx-background-color: #262626;
-    -fx-text-fill: #EEEEEE;
+    -fx-background-color: #163832;
+    -fx-text-fill: #DAF1DE;
 }
 
 .dark .btn-secondary {
-    -fx-background-color: #262626;
-    -fx-text-fill: #EEEEEE;
+    -fx-background-color: #163832;
+    -fx-text-fill: #DAF1DE;
 }
 
 .dark .btn-primary {
-    -fx-background-color: #EEEEEE;
-    -fx-text-fill: #111111;
+    -fx-background-color: #8EB69B;
+    -fx-text-fill: #051F20;
 }
 
 .dark .btn-danger {
@@ -192,65 +257,111 @@
 }
 
 .dark .origem-label {
-    -fx-text-fill: #CCCCCC;
+    -fx-text-fill: #8EB69B;
 }
 
 .dark .fonte-label {
-    -fx-text-fill: #999999;
+    -fx-text-fill: #6f9482;
 }
 
 .dark .status-label {
-    -fx-text-fill: #AAAAAA;
+    -fx-text-fill: #6f9482;
 }
 
 .dark .conversation-list .list-cell:selected {
     -fx-background-color: rgba(255, 255, 255, 0.08);
 }
 
-.dark .brand-label {
-    -fx-text-fill: #EEEEEE;
+.dark .search-input {
+    -fx-background-color: #0B2B26;
+    -fx-border-color: #163832;
+    -fx-text-fill: #DAF1DE;
+    -fx-prompt-text-fill: #6f9482;
+}
+
+/* -------- Bolhas de chat (escuro) -------- */
+
+.dark .bubble-ai-text {
+    -fx-background-color: #0B2B26;
+    -fx-border-color: #163832;
+    -fx-text-fill: #DAF1DE;
+}
+
+.dark .bubble-user-text {
+    -fx-background-color: #235347;
+    -fx-text-fill: #DAF1DE;
+}
+
+.dark .bubble-error {
+    -fx-background-color: #402020;
+    -fx-text-fill: #ff9999;
+}
+
+/* -------- Tela de boas-vindas (escuro) -------- */
+
+.dark .empty-title {
+    -fx-text-fill: #DAF1DE;
+}
+
+.dark .empty-subtitle {
+    -fx-text-fill: #6f9482;
+}
+
+.dark .suggestion-card {
+    -fx-background-color: #0B2B26;
+    -fx-border-color: #163832;
+}
+
+.dark .suggestion-card-title {
+    -fx-text-fill: #DAF1DE;
+}
+
+.dark .suggestion-card-desc {
+    -fx-text-fill: #6f9482;
+}
+
+/* -------- Barra de entrada (escuro) -------- */
+
+.dark .text-input {
+    -fx-background-color: #0B2B26;
+    -fx-border-color: #163832;
+    -fx-text-fill: #DAF1DE;
+    -fx-prompt-text-fill: #6f9482;
 }
 
 /* -------- Tela de login / registro (escuro) -------- */
 
 .dark .auth-card {
-    -fx-background-color: #1A1A1A;
+    -fx-background-color: #0B2B26;
 }
 
 .dark .tabs-bar {
-    -fx-background-color: #262626;
+    -fx-background-color: #163832;
 }
 
 .dark .tab-btn {
-    -fx-text-fill: #999999;
+    -fx-text-fill: #6f9482;
 }
 
 .dark .tab-btn.active {
-    -fx-background-color: #EEEEEE;
-    -fx-text-fill: #111111;
+    -fx-background-color: #8EB69B;
+    -fx-text-fill: #051F20;
 }
 
 .dark .form-title {
-    -fx-text-fill: #EEEEEE;
+    -fx-text-fill: #DAF1DE;
 }
 
 .dark .form-subtitle {
-    -fx-text-fill: #999999;
+    -fx-text-fill: #6f9482;
 }
 
 .dark .field-label {
-    -fx-text-fill: #CCCCCC;
-}
-
-.dark .text-input {
-    -fx-background-color: #262626;
-    -fx-border-color: #444444;
-    -fx-text-fill: #EEEEEE;
-    -fx-prompt-text-fill: #777777;
+    -fx-text-fill: #cfe8da;
 }
 
 .dark .btn-toggle-senha {
-    -fx-text-fill: #777777;
+    -fx-text-fill: #6f9482;
 }
 
 .dark .error-label {
@@ -262,5 +373,5 @@
 }
 
 .dark .link-muted {
-    -fx-text-fill: #999999;
+    -fx-text-fill: #6f9482;
 }
