@@ -71,7 +71,7 @@ public class AuthView {
         // BARRA SUPERIOR
         // ============================================================
 
-        Label marca = new Label("AERO");
+        Label marca = new Label("FAITH IN GOD");
 
         marca.getStyleClass().add("brand-label");
 

@@ -121,7 +121,9 @@ public class ChatView {
 
         VBox.setVgrow(listaConversas, Priority.ALWAYS);
 
-        Label titulo = new Label("Groq Chat");
+        Label titulo = new Label(
+                "FAITH IN GOD"
+        );
 
         titulo.getStyleClass().add("header-title");
 

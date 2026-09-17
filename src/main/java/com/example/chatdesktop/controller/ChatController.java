@@ -3,6 +3,7 @@ package com.example.chatdesktop.controller;
 import com.example.chatdesktop.model.ChatMessage;
 import com.example.chatdesktop.model.Conversation;
 import com.example.chatdesktop.service.GroqService;
+import com.example.chatdesktop.service.PersistenciaService;
 import com.example.chatdesktop.service.RagService;
 import com.example.chatdesktop.service.WebSearchService;
 import com.example.chatdesktop.view.ChatView;
@@ -14,6 +15,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Controlador principal do ChatDesktop.
+ *
+ * Responsável por:
+ * - Enviar mensagens para a Groq
+ * - Utilizar o RAG interna (base local) e, se necessário,
+ *   RAG externa (busca na web) para montar contexto
+ * - Criar novas conversas
+ * - Selecionar conversas
+ * - Renomear conversas
+ * - Excluir conversas
+ * - Regenerar respostas
+ * - Atualizar a interface
+ * - Persistir o histórico de conversas em disco, para que ele
+ *   continue existindo mesmo depois de fechar e abrir o app
+ */
 public class ChatController {
 
     private final ChatView view;
@@ -24,12 +41,19 @@ public class ChatController {
 
     private final WebSearchService webSearchService;
 
+    private final PersistenciaService persistenciaService;
+
     private final List<Conversation> conversas;
 
     private Conversation conversaAtual;
 
     private String ultimaPergunta = "";
 
+    /**
+     * Pequeno "pacote" com o resultado da busca de contexto:
+     * o texto encontrado, a origem (para exibir na tela) e
+     * a fonte (detalhe da origem).
+     */
     private record ContextoResultado(
             String contexto,
             String origem,
@@ -37,6 +61,9 @@ public class ChatController {
     ) {
     }
 
+    /**
+     * Construtor.
+     */
     public ChatController(ChatView view) {
 
         this.view = view;
@@ -47,43 +74,73 @@ public class ChatController {
 
         this.webSearchService = new WebSearchService();
 
-        this.conversas = new ArrayList<>();
+        this.persistenciaService = new PersistenciaService();
 
-        criarPrimeiraConversa();
+        this.conversas = carregarConversasComTratamento();
 
         configurarEventos();
+
+        if (conversas.isEmpty()) {
+
+            criarPrimeiraConversa();
+
+        } else {
+
+            conversaAtual = conversas.get(conversas.size() - 1);
+
+            ultimaPergunta = encontrarUltimaPergunta(conversaAtual);
+
+            view.carregarConversa(conversaAtual);
+
+            atualizarLista();
+        }
     }
+
+    // ================================================================
+    // CONFIGURAÇÃO DOS EVENTOS
+    // ================================================================
 
     private void configurarEventos() {
 
+        // Botão Enviar
         view.getBotaoEnviar().setOnAction(
                 evento -> enviarMensagem()
         );
 
+        // Pressionar ENTER no campo de mensagem
         view.getCampoMensagem().setOnAction(
                 evento -> enviarMensagem()
         );
 
+        // Nova conversa
         view.setAoNovaConversa(
                 this::novaConversa
         );
 
+        // Regenerar resposta
         view.setAoRegenerar(
                 this::regenerarResposta
         );
 
+        // Renomear conversa
         view.setAoRenomear(
                 this::renomearConversa
         );
 
+        // Excluir conversa
         view.setAoExcluir(
                 this::excluirConversa
         );
 
+        // Selecionar conversa
         view.setAoSelecionarConversa(
                 this::selecionarConversa
         );
     }
+
+    // ================================================================
+    // PRIMEIRA CONVERSA (só é usada quando não há histórico salvo)
+    // ================================================================
 
     private void criarPrimeiraConversa() {
 
@@ -105,6 +162,10 @@ public class ChatController {
                         + "Digite uma mensagem para começar."
         );
     }
+
+    // ================================================================
+    // NOVA CONVERSA
+    // ================================================================
 
     private void novaConversa() {
 
@@ -132,6 +193,10 @@ public class ChatController {
                 .requestFocus();
     }
 
+    // ================================================================
+    // ENVIAR MENSAGEM
+    // ================================================================
+
     private void enviarMensagem() {
 
         if (conversaAtual == null) {
@@ -154,6 +219,10 @@ public class ChatController {
         );
     }
 
+    // ================================================================
+    // ENVIO PARA GROQ + RAG (INTERNA E EXTERNA)
+    // ================================================================
+
     private void enviarPergunta(
             String mensagem
     ) {
@@ -162,13 +231,16 @@ public class ChatController {
             return;
         }
 
+        // Mostra a mensagem do usuário na tela
         view.adicionarMensagemUsuario(
                 mensagem
         );
 
+        // Limpa o campo
         view.getCampoMensagem()
                 .clear();
 
+        // Adiciona a mensagem ao histórico
         ChatMessage mensagemUsuario =
                 ChatMessage.user(
                         mensagem
@@ -178,18 +250,41 @@ public class ChatController {
                 mensagemUsuario
         );
 
+        // Salva já com a pergunta do usuário, mesmo antes da
+        // resposta da IA chegar (evita perder a pergunta se algo falhar)
+        persistirConversas();
+
+        // Mostra carregamento
         view.setCarregando(true);
+
+        // ============================================================
+        // BUSCA DE CONTEXTO (RAG interna, com fallback para externa)
+        // ============================================================
 
         final ContextoResultado contextoResultado =
                 obterContexto(mensagem);
+
+        // ============================================================
+        // HISTÓRICO
+        // ============================================================
 
         final List<ChatMessage> historico =
                 new ArrayList<>(
                         conversaAtual.getMensagens()
                 );
 
+        /*
+         * Guardamos a conversa atual em uma variável final.
+         *
+         * Isso evita problemas caso o usuário crie outra
+         * conversa enquanto a IA estiver processando.
+         */
         final Conversation conversaDaRequisicao =
                 conversaAtual;
+
+        // ============================================================
+        // THREAD
+        // ============================================================
 
         Thread thread =
                 new Thread(() -> {
@@ -257,6 +352,10 @@ public class ChatController {
         thread.start();
     }
 
+    // ================================================================
+    // REGENERAR RESPOSTA
+    // ================================================================
+
     private void regenerarResposta() {
 
         if (conversaAtual == null) {
@@ -274,6 +373,10 @@ public class ChatController {
         List<ChatMessage> mensagens =
                 conversaAtual.getMensagens();
 
+        /*
+         * Se a última mensagem for da IA,
+         * removemos antes de gerar uma nova.
+         */
         if (!mensagens.isEmpty()) {
 
             int ultimoIndice =
@@ -293,11 +396,23 @@ public class ChatController {
                 mensagens.remove(
                         ultimoIndice
                 );
+
+                persistirConversas();
             }
         }
 
+        /*
+         * Regera a resposta usando a última pergunta.
+         *
+         * Não adicionamos novamente a pergunta ao histórico
+         * aqui porque ela já está presente.
+         */
         gerarNovamente();
     }
+
+    // ================================================================
+    // GERAR NOVAMENTE
+    // ================================================================
 
     private void gerarNovamente() {
 
@@ -379,6 +494,10 @@ public class ChatController {
         thread.start();
     }
 
+    // ================================================================
+    // BUSCA DE CONTEXTO: RAG INTERNA PRIMEIRO, EXTERNA COMO FALLBACK
+    // ================================================================
+
     private ContextoResultado obterContexto(String pergunta) {
 
         String contextoInterno = obterContextoInterno(pergunta);
@@ -448,6 +567,10 @@ public class ChatController {
         }
     }
 
+    // ================================================================
+    // RENOMEAR CONVERSA
+    // ================================================================
+
     private void renomearConversa() {
 
         if (conversaAtual == null) {
@@ -493,6 +616,10 @@ public class ChatController {
         );
     }
 
+    // ================================================================
+    // EXCLUIR CONVERSA
+    // ================================================================
+
     private void excluirConversa() {
 
         if (conversaAtual == null) {
@@ -512,6 +639,10 @@ public class ChatController {
                 conversaAtual
         );
 
+        /*
+         * Se não houver mais conversas,
+         * criamos uma nova automaticamente.
+         */
         if (conversas.isEmpty()) {
 
             criarPrimeiraConversa();
@@ -519,6 +650,9 @@ public class ChatController {
             return;
         }
 
+        /*
+         * Seleciona a última conversa restante.
+         */
         conversaAtual =
                 conversas.get(
                         conversas.size() - 1
@@ -535,6 +669,10 @@ public class ChatController {
                 conversaAtual
         );
     }
+
+    // ================================================================
+    // SELECIONAR CONVERSA
+    // ================================================================
 
     private void selecionarConversa(
             Conversation conversa
@@ -556,6 +694,10 @@ public class ChatController {
                 conversa
         );
     }
+
+    // ================================================================
+    // ENCONTRAR ÚLTIMA PERGUNTA
+    // ================================================================
 
     private String encontrarUltimaPergunta(
             Conversation conversa
@@ -589,6 +731,10 @@ public class ChatController {
 
         return "";
     }
+
+    // ================================================================
+    // TÍTULO AUTOMÁTICO
+    // ================================================================
 
     private void atualizarTitulo() {
 
@@ -629,6 +775,10 @@ public class ChatController {
         );
     }
 
+    // ================================================================
+    // ATUALIZAR LISTA DE CONVERSAS (e persistir em disco)
+    // ================================================================
+
     private void atualizarLista() {
 
         view.getListaConversas()
@@ -645,7 +795,48 @@ public class ChatController {
                             conversaAtual
                     );
         }
+
+        persistirConversas();
     }
+
+    // ================================================================
+    // PERSISTÊNCIA
+    // ================================================================
+
+    private List<Conversation> carregarConversasComTratamento() {
+
+        try {
+
+            return persistenciaService.carregarConversas();
+
+        } catch (Exception erro) {
+
+            System.err.println(
+                    "Erro ao carregar conversas salvas: "
+                            + erro.getMessage()
+            );
+
+            return new ArrayList<>();
+        }
+    }
+
+    private void persistirConversas() {
+
+        try {
+
+            persistenciaService.salvarConversas(conversas);
+
+        } catch (Exception erro) {
+
+            System.err.println(
+                    "Erro ao salvar conversas: " + erro.getMessage()
+            );
+        }
+    }
+
+    // ================================================================
+    // TRATAMENTO DE ERRO
+    // ================================================================
 
     private String obterMensagemErro(
             Throwable erro

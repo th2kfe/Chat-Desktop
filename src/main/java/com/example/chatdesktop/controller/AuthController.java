@@ -1,5 +1,6 @@
 package com.example.chatdesktop.controller;
 
+import com.example.chatdesktop.service.PersistenciaService;
 import com.example.chatdesktop.view.AuthView;
 
 import java.util.HashMap;
@@ -8,9 +9,10 @@ import java.util.Map;
 /**
  * Controlador da tela de login/registro.
  *
- * OBS: aqui não existe um banco de dados real — as contas
- * ficam guardadas em memória (Map) só para fins de demonstração.
- * Elas são perdidas a cada vez que você fecha e abre o app.
+ * As contas cadastradas agora são salvas em disco (via
+ * PersistenciaService), então elas continuam existindo mesmo
+ * depois de fechar e abrir o app de novo — não precisa mais
+ * se registrar toda vez.
  */
 public class AuthController {
 
@@ -18,13 +20,19 @@ public class AuthController {
 
     private final Runnable aoAutenticar;
 
-    private final Map<String, String> usuarios = new HashMap<>();
+    private final PersistenciaService persistenciaService;
+
+    private final Map<String, String> usuarios;
 
     public AuthController(AuthView view, Runnable aoAutenticar) {
 
         this.view = view;
 
         this.aoAutenticar = aoAutenticar;
+
+        this.persistenciaService = new PersistenciaService();
+
+        this.usuarios = carregarUsuariosComTratamento();
 
         configurarEventos();
     }
@@ -42,19 +50,11 @@ public class AuthController {
 
     private void tentarLogin() {
 
-        System.out.println("BOTAO ENTRAR CLICADO");
-
         view.limparErroLogin();
 
         String email = view.getCampoLoginEmail().getText().trim();
 
         String senha = view.getCampoLoginSenha().getTexto();
-
-        System.out.println("Email digitado: [" + email + "]");
-
-        System.out.println("Senha digitada: [" + senha + "]");
-
-        System.out.println("Senha salva para esse email: [" + usuarios.get(email.toLowerCase()) + "]");
 
         if (email.isBlank() || senha.isBlank()) {
 
@@ -71,8 +71,6 @@ public class AuthController {
 
             return;
         }
-
-        System.out.println("LOGIN VALIDADO -> chamando aoAutenticar.run()");
 
         // Login OK -> abre a tela do chat (IA)
         aoAutenticar.run();
@@ -131,9 +129,43 @@ public class AuthController {
 
         usuarios.put(email, senha);
 
-        System.out.println("CONTA CRIADA: " + email);
+        salvarUsuariosComTratamento();
 
         // Conta criada -> volta para a aba de Login em branco
         view.voltarParaLoginAposRegistro();
+    }
+
+    // ================================================================
+    // PERSISTÊNCIA
+    // ================================================================
+
+    private Map<String, String> carregarUsuariosComTratamento() {
+
+        try {
+
+            return persistenciaService.carregarUsuarios();
+
+        } catch (Exception erro) {
+
+            System.err.println(
+                    "Erro ao carregar usuários salvos: " + erro.getMessage()
+            );
+
+            return new HashMap<>();
+        }
+    }
+
+    private void salvarUsuariosComTratamento() {
+
+        try {
+
+            persistenciaService.salvarUsuarios(usuarios);
+
+        } catch (Exception erro) {
+
+            System.err.println(
+                    "Erro ao salvar usuários: " + erro.getMessage()
+            );
+        }
     }
 }
