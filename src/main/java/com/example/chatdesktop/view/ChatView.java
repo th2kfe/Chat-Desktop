@@ -2,22 +2,27 @@ package com.example.chatdesktop.view;
 
 import com.example.chatdesktop.model.Conversation;
 
+import javafx.animation.*;
 import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.paint.CycleMethod;
-import javafx.scene.paint.RadialGradient;
-import javafx.scene.paint.Stop;
+import javafx.scene.paint.*;
 import javafx.scene.shape.Circle;
+import javafx.util.Duration;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -25,606 +30,1716 @@ public class ChatView {
 
     private final BorderPane root;
 
-    // ---- SIDEBAR ----
-    private final TextField campoBusca;
+    private TextField campoBusca;
+    private ListView<Conversation> listaConversas;
 
-    private final ListView<Conversation> listaConversas;
+    private List<Conversation> listaCompleta =
+            new ArrayList<>();
 
-    private List<Conversation> ultimaListaCompleta = new ArrayList<>();
+    private boolean filtrando;
 
-    private boolean aplicandoFiltro = false;
+    private Button botaoNovaConversa;
+    private Button botaoRenomear;
+    private Button botaoExcluir;
+    private Button botaoTema;
 
-    private final Button botaoNovaConversa;
-
-    // ---- HEADER ----
-    private final Button botaoTema;
-
-    private final Button botaoRenomear;
-
-    private final Button botaoExcluir;
-
-    private boolean temaEscuro = false;
-
-    // ---- ÁREA DE MENSAGENS ----
     private final VBox mensagensBox;
-
     private final ScrollPane scrollMensagens;
+    private final StackPane areaPrincipal;
+    private final StackPane telaInicial;
 
-    private final VBox estadoVazio;
+    private TextField campoMensagem;
+    private Button botaoEnviar;
+    private Button botaoCopiar;
+    private Button botaoRegenerar;
 
-    // ---- CAPTION / STATUS ----
-    private final Label origemResposta;
+    private Label origemResposta;
+    private Label fonteResposta;
+    private Label status;
 
-    private final Label fonteResposta;
-
-    private final Label status;
-
-    // ---- BARRA DE ENTRADA ----
-    private final TextField campoMensagem;
-
-    private final Button botaoCopiar;
-
-    private final Button botaoRegenerar;
-
-    private final Button botaoEnviar;
-
-    // ---- COMPATIBILIDADE DE API (não exibido na tela) ----
-    private final TextArea areaChatOculta = new TextArea();
+    private final TextArea areaChatOculta =
+            new TextArea();
 
     private String ultimaRespostaIA = "";
 
-    private Consumer<Conversation> aoSelecionarConversa;
+    private boolean temaEscuro = true;
+
+    private Consumer<Conversation>
+            aoSelecionarConversa;
 
     private Runnable aoNovaConversa;
-
     private Runnable aoRegenerar;
-
     private Runnable aoRenomear;
-
     private Runnable aoExcluir;
 
     public ChatView() {
 
         root = new BorderPane();
 
-        root.getStyleClass().add("app-root");
-
-        root.getStylesheets().add(
-                getClass().getResource(
-                        "/com/example/chatdesktop/css/chat.css"
-                ).toExternalForm()
+        root.getStyleClass().addAll(
+                "app-root",
+                "dark",
+                "chat-root"
         );
 
-        // ============================================================
-        // SIDEBAR
-        // ============================================================
-
-        Label marca = new Label("FAITH IN GOD");
-
-        marca.getStyleClass().add("brand-label");
-
-        marca.setStyle(
-                "-fx-font-size: 16px;" +
-                        "-fx-font-weight: bold;"
+        var css = getClass().getResource(
+                "/com/example/chatdesktop/css/chat.css"
         );
 
-        campoBusca = new TextField();
+        if (css != null) {
+            root.getStylesheets().add(
+                    css.toExternalForm()
+            );
+        }
 
-        campoBusca.setPromptText("Buscar conversas...");
+        StackPane fundo = criarFundo();
 
-        campoBusca.getStyleClass().add("search-input");
+        BorderPane janela = new BorderPane();
 
-        campoBusca.textProperty().addListener(
-                (obs, valorAntigo, valorNovo) -> aplicarFiltroBusca(valorNovo)
+        janela.getStyleClass().add(
+                "ai-window"
         );
 
-        botaoNovaConversa = new Button("+ Nova conversa");
+        janela.setMaxWidth(1500);
+        janela.setMaxHeight(930);
 
-        botaoNovaConversa.getStyleClass().add("btn-primary");
-
-        botaoNovaConversa.setMaxWidth(Double.MAX_VALUE);
-
-        botaoNovaConversa.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 10;"
+        StackPane.setMargin(
+                janela,
+                new Insets(17)
         );
 
-        listaConversas = new ListView<>();
+        janela.setLeft(criarSidebar());
 
-        listaConversas.getStyleClass().add("conversation-list");
+        BorderPane centro =
+                new BorderPane();
 
-        listaConversas.setCellFactory(
-                lista -> new ConversationCell()
+        centro.getStyleClass().add(
+                "ai-main"
         );
 
-        listaConversas.setStyle(
-                "-fx-background-color: transparent;"
+        centro.setTop(criarHeader());
+
+        mensagensBox =
+                new VBox(22);
+
+        mensagensBox.getStyleClass().add(
+                "ai-messages"
         );
 
-        listaConversas.getItems().addListener(
-                (ListChangeListener<Conversation>) mudanca -> {
-
-                    if (!aplicandoFiltro) {
-
-                        ultimaListaCompleta =
-                                new ArrayList<>(
-                                        listaConversas.getItems()
-                                );
-                    }
-                }
+        mensagensBox.setPadding(
+                new Insets(35, 65, 45, 65)
         );
 
-        listaConversas.setOnMouseClicked(
-                evento -> {
-
-                    Conversation conversa =
-                            listaConversas
-                                    .getSelectionModel()
-                                    .getSelectedItem();
-
-                    if (conversa != null && aoSelecionarConversa != null) {
-
-                        aoSelecionarConversa.accept(conversa);
-                    }
-                }
-        );
-
-        VBox.setVgrow(listaConversas, Priority.ALWAYS);
-
-        VBox sidebar = new VBox(
-                14, marca, campoBusca, botaoNovaConversa, listaConversas
-        );
-
-        sidebar.getStyleClass().add("sidebar");
-
-        sidebar.setPadding(new Insets(18));
-
-        sidebar.setPrefWidth(240);
-
-        root.setLeft(sidebar);
-
-        // ============================================================
-        // HEADER (barra superior minimalista)
-        // ============================================================
-
-        botaoTema = new Button("Escuro");
-
-        botaoTema.getStyleClass().add("btn-light");
-
-        botaoTema.setStyle("-fx-background-radius: 8;");
-
-        botaoTema.setOnAction(evento -> alternarTema());
-
-        botaoRenomear = new Button("Renomear");
-
-        botaoRenomear.getStyleClass().add("btn-light");
-
-        botaoRenomear.setStyle("-fx-background-radius: 8;");
-
-        botaoExcluir = new Button("Excluir");
-
-        botaoExcluir.getStyleClass().add("btn-danger");
-
-        botaoExcluir.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8;"
-        );
-
-        Region espacoHeader = new Region();
-
-        HBox.setHgrow(espacoHeader, Priority.ALWAYS);
-
-        HBox header = new HBox(
-                10, espacoHeader, botaoTema, botaoRenomear, botaoExcluir
-        );
-
-        header.getStyleClass().add("header-flat");
-
-        header.setAlignment(Pos.CENTER_RIGHT);
-
-        header.setPadding(new Insets(16, 20, 0, 20));
-
-        root.setTop(header);
-
-        // ============================================================
-        // ÁREA DE MENSAGENS (bolhas)
-        // ============================================================
-
-        mensagensBox = new VBox(14);
-
-        mensagensBox.setPadding(new Insets(10, 30, 10, 30));
-
-        mensagensBox.getChildren().addListener(
-                (ListChangeListener<Node>) mudanca -> atualizarEstadoVazio()
-        );
-
-        scrollMensagens = new ScrollPane(mensagensBox);
+        scrollMensagens =
+                new ScrollPane(
+                        mensagensBox
+                );
 
         scrollMensagens.setFitToWidth(true);
 
-        scrollMensagens.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-background: transparent;"
+        scrollMensagens.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
         );
 
-        // ============================================================
-        // CAPTION DE ORIGEM / STATUS
-        // ============================================================
-
-        origemResposta = new Label("");
-
-        origemResposta.getStyleClass().add("origem-label");
-
-        origemResposta.setStyle(
-                "-fx-font-size: 11px;" +
-                        "-fx-font-weight: bold;"
+        scrollMensagens.getStyleClass().add(
+                "ai-scroll"
         );
 
-        fonteResposta = new Label("");
+        telaInicial =
+                criarTelaInicial();
 
-        fonteResposta.getStyleClass().add("fonte-label");
+        areaPrincipal =
+                new StackPane(
+                        criarEstrelas(),
+                        scrollMensagens,
+                        telaInicial
+                );
 
-        fonteResposta.setStyle("-fx-font-size: 11px;");
-
-        status = new Label();
-
-        status.getStyleClass().add("status-label");
-
-        status.setStyle("-fx-font-size: 11px;");
-
-        HBox linhaCaption = new HBox(
-                14, origemResposta, fonteResposta, status
+        areaPrincipal.getStyleClass().add(
+                "ai-content"
         );
 
-        linhaCaption.setPadding(new Insets(0, 30, 4, 30));
+        centro.setCenter(areaPrincipal);
+        centro.setBottom(criarComposer());
 
-        // ============================================================
-        // BARRA DE ENTRADA
-        // ============================================================
+        janela.setCenter(centro);
 
-        campoMensagem = new TextField();
+        fundo.getChildren().add(janela);
 
-        campoMensagem.setPromptText("Digite sua mensagem...");
+        root.setCenter(fundo);
 
-        campoMensagem.getStyleClass().add("text-input");
+        mensagensBox
+                .getChildren()
+                .addListener(
+                        (ListChangeListener<Node>) c ->
+                                atualizarTelaInicial()
+                );
 
-        campoMensagem.setPrefHeight(46);
-
-        HBox.setHgrow(campoMensagem, Priority.ALWAYS);
-
-        botaoCopiar = new Button("Copiar");
-
-        botaoCopiar.getStyleClass().add("btn-secondary");
-
-        botaoCopiar.setPrefHeight(46);
-
-        botaoCopiar.setDisable(true);
-
-        botaoCopiar.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 10;"
-        );
-
-        botaoCopiar.setOnAction(evento -> copiarRespostaIA());
-
-        botaoRegenerar = new Button("Regenerar");
-
-        botaoRegenerar.getStyleClass().add("btn-secondary");
-
-        botaoRegenerar.setPrefHeight(46);
-
-        botaoRegenerar.setDisable(true);
-
-        botaoRegenerar.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 10;"
-        );
-
-        botaoRegenerar.setOnAction(
-                evento -> {
-
-                    if (aoRegenerar != null) {
-
-                        aoRegenerar.run();
-                    }
-                }
-        );
-
-        botaoEnviar = new Button("Enviar");
-
-        botaoEnviar.getStyleClass().add("btn-primary");
-
-        botaoEnviar.setPrefHeight(46);
-
-        botaoEnviar.setPrefWidth(100);
-
-        botaoEnviar.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 10;"
-        );
-
-        HBox barraEntrada = new HBox(
-                10, campoMensagem, botaoRegenerar, botaoCopiar, botaoEnviar
-        );
-
-        barraEntrada.setAlignment(Pos.CENTER);
-
-        barraEntrada.getStyleClass().add("input-bar");
-
-        barraEntrada.setPadding(new Insets(14, 20, 20, 20));
-
-        VBox rodape = new VBox(6, linhaCaption, barraEntrada);
-
-        // ============================================================
-        // ESTADO VAZIO (tela de boas-vindas)
-        // ============================================================
-
-        estadoVazio = criarEstadoVazio();
-
-        StackPane areaConteudo = new StackPane(scrollMensagens, estadoVazio);
-
-        VBox centro = new VBox(areaConteudo, rodape);
-
-        VBox.setVgrow(areaConteudo, Priority.ALWAYS);
-
-        root.setCenter(centro);
-
-        // ============================================================
-        // EVENTOS DE BOTÕES
-        // ============================================================
-
-        botaoNovaConversa.setOnAction(
-                evento -> {
-
-                    if (aoNovaConversa != null) {
-
-                        aoNovaConversa.run();
-                    }
-                }
-        );
-
-        botaoRenomear.setOnAction(
-                evento -> {
-
-                    if (aoRenomear != null) {
-
-                        aoRenomear.run();
-                    }
-                }
-        );
-
-        botaoExcluir.setOnAction(
-                evento -> {
-
-                    if (aoExcluir != null) {
-
-                        aoExcluir.run();
-                    }
-                }
-        );
-
-        atualizarEstadoVazio();
+        configurarEventos();
+        atualizarTelaInicial();
     }
 
-    // ================================================================
-    // TELA DE BOAS-VINDAS (orbe + sugestões)
-    // ================================================================
+    // =========================================================
+    // FUNDO
+    // =========================================================
 
-    private VBox criarEstadoVazio() {
+    private StackPane criarFundo() {
 
-        Circle orbe = new Circle(46);
+        StackPane fundo =
+                new StackPane();
 
-        RadialGradient gradiente = new RadialGradient(
-                0, 0, 0.5, 0.5, 0.6, true, CycleMethod.NO_CYCLE,
-                new Stop(0, Color.web("#DAF1DE")),
-                new Stop(0.5, Color.web("#8EB69B")),
-                new Stop(1, Color.web("#163832"))
+        fundo.getStyleClass().add(
+                "ai-outer"
         );
 
-        orbe.setFill(gradiente);
+        Pane glows = new Pane();
+        glows.setMouseTransparent(true);
 
-        Label titulo = new Label("Como posso te ajudar hoje?");
+        Circle azul =
+                glow("#168CFF", 380, .20);
 
-        titulo.getStyleClass().add("empty-title");
+        Circle roxo =
+                glow("#704DFF", 360, .15);
 
-        titulo.setStyle(
-                "-fx-font-size: 24px;" +
-                        "-fx-font-weight: bold;"
+        azul.layoutXProperty().bind(
+                glows.widthProperty()
+                        .multiply(.10)
         );
 
-        Label subtitulo = new Label(
-                "Pergunte algo, ou escolha uma sugestão abaixo."
+        azul.layoutYProperty().bind(
+                glows.heightProperty()
+                        .multiply(.20)
         );
 
-        subtitulo.getStyleClass().add("empty-subtitle");
+        roxo.layoutXProperty().bind(
+                glows.widthProperty()
+                        .multiply(.90)
+        );
 
-        subtitulo.setStyle("-fx-font-size: 13px;");
+        roxo.layoutYProperty().bind(
+                glows.heightProperty()
+                        .multiply(.85)
+        );
 
-        HBox cartoes = new HBox(
-                14,
-                criarCartaoSugestao(
-                        "Resumir conhecimento",
-                        "Peça um resumo dos documentos da base local.",
-                        "Resuma o conteúdo mais importante da minha base de conhecimento."
-                ),
-                criarCartaoSugestao(
-                        "Pesquisar na web",
-                        "A IA busca informações atuais automaticamente.",
-                        "Pesquise informações atuais sobre "
-                ),
-                criarCartaoSugestao(
-                        "Só conversar",
-                        "Comece um bate-papo qualquer.",
-                        "Como você está hoje?"
+        glows.getChildren().addAll(
+                azul,
+                roxo
+        );
+
+        fundo.getChildren().add(glows);
+
+        return fundo;
+    }
+
+    private Circle glow(
+            String cor,
+            double raio,
+            double opacity
+    ) {
+
+        Circle c = new Circle(raio);
+
+        c.setFill(
+                new RadialGradient(
+                        0, 0,
+                        .5, .5,
+                        .5,
+                        true,
+                        CycleMethod.NO_CYCLE,
+                        new Stop(
+                                0,
+                                Color.web(cor, opacity)
+                        ),
+                        new Stop(
+                                1,
+                                Color.TRANSPARENT
+                        )
                 )
         );
 
-        cartoes.setAlignment(Pos.CENTER);
+        c.setEffect(
+                new GaussianBlur(70)
+        );
 
-        VBox caixa = new VBox(18, orbe, titulo, subtitulo, cartoes);
-
-        caixa.setAlignment(Pos.CENTER);
-
-        caixa.setMaxWidth(680);
-
-        return caixa;
+        return c;
     }
 
-    private VBox criarCartaoSugestao(
+    // =========================================================
+    // SIDEBAR
+    // =========================================================
+
+    private VBox criarSidebar() {
+
+        StackPane logo = criarLogo(19);
+
+        Label nome =
+                new Label("FAITH IN GOD");
+
+        nome.getStyleClass().add(
+                "side-brand"
+        );
+
+        Label descricao =
+                new Label("YOUR AI COMPANION");
+
+        descricao.getStyleClass().add(
+                "side-brand-mini"
+        );
+
+        VBox marcaText =
+                new VBox(
+                        1,
+                        nome,
+                        descricao
+                );
+
+        HBox marca =
+                new HBox(
+                        10,
+                        logo,
+                        marcaText
+                );
+
+        marca.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        marca.getStyleClass().add(
+                "side-logo"
+        );
+
+        // NOVA CONVERSA
+
+        botaoNovaConversa =
+                new Button(
+                        "＋   Nova conversa"
+                );
+
+        botaoNovaConversa.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        botaoNovaConversa.getStyleClass().add(
+                "side-new-chat"
+        );
+
+        // BUSCA
+
+        Label buscaIcon =
+                new Label("⌕");
+
+        buscaIcon.getStyleClass().add(
+                "side-search-icon"
+        );
+
+        campoBusca =
+                new TextField();
+
+        campoBusca.setPromptText(
+                "Pesquisar conversas..."
+        );
+
+        campoBusca.getStyleClass().add(
+                "side-search-input"
+        );
+
+        HBox.setHgrow(
+                campoBusca,
+                Priority.ALWAYS
+        );
+
+        HBox busca =
+                new HBox(
+                        8,
+                        buscaIcon,
+                        campoBusca
+                );
+
+        busca.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        busca.getStyleClass().add(
+                "side-search"
+        );
+
+        // HISTÓRICO
+
+        Label historico =
+                new Label("CONVERSAS");
+
+        historico.getStyleClass().add(
+                "side-section-title"
+        );
+
+        listaConversas =
+                new ListView<>();
+
+        listaConversas.getStyleClass().add(
+                "side-history"
+        );
+
+        listaConversas.setCellFactory(
+                lista ->
+                        new ConversationCell()
+        );
+
+        VBox.setVgrow(
+                listaConversas,
+                Priority.ALWAYS
+        );
+
+        // FOOTER
+
+        Circle avatarCircle =
+                new Circle(18);
+
+        avatarCircle.setFill(
+                new LinearGradient(
+                        0, 0,
+                        1, 1,
+                        true,
+                        CycleMethod.NO_CYCLE,
+                        new Stop(
+                                0,
+                                Color.web("#55E8FF")
+                        ),
+                        new Stop(
+                                1,
+                                Color.web("#0E4EB2")
+                        )
+                )
+        );
+
+        Label avatarText =
+                new Label("U");
+
+        avatarText.getStyleClass().add(
+                "side-avatar-text"
+        );
+
+        StackPane avatar =
+                new StackPane(
+                        avatarCircle,
+                        avatarText
+                );
+
+        Label usuario =
+                new Label("Usuário");
+
+        usuario.getStyleClass().add(
+                "side-user-name"
+        );
+
+        Label plano =
+                new Label("FAITH ACCOUNT");
+
+        plano.getStyleClass().add(
+                "side-user-plan"
+        );
+
+        VBox userInfo =
+                new VBox(
+                        1,
+                        usuario,
+                        plano
+                );
+
+        Region spacer =
+                new Region();
+
+        HBox.setHgrow(
+                spacer,
+                Priority.ALWAYS
+        );
+
+        botaoTema =
+                new Button("☾");
+
+        botaoTema.getStyleClass().add(
+                "side-theme"
+        );
+
+        HBox perfil =
+                new HBox(
+                        9,
+                        avatar,
+                        userInfo,
+                        spacer,
+                        botaoTema
+                );
+
+        perfil.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        perfil.getStyleClass().add(
+                "side-profile"
+        );
+
+        VBox sidebar =
+                new VBox(
+                        17,
+                        marca,
+                        botaoNovaConversa,
+                        busca,
+                        historico,
+                        listaConversas,
+                        perfil
+                );
+
+        sidebar.setPrefWidth(270);
+        sidebar.setMinWidth(245);
+        sidebar.setMaxWidth(290);
+
+        sidebar.setPadding(
+                new Insets(
+                        22,
+                        16,
+                        16,
+                        16
+                )
+        );
+
+        sidebar.getStyleClass().add(
+                "ai-sidebar"
+        );
+
+        configurarBusca();
+
+        return sidebar;
+    }
+
+    // =========================================================
+    // HEADER
+    // =========================================================
+
+    private HBox criarHeader() {
+
+        StackPane logo =
+                criarLogo(14);
+
+        Label titulo =
+                new Label(
+                        "FAITH AI"
+                );
+
+        titulo.getStyleClass().add(
+                "ai-header-title"
+        );
+
+        Label statusOnline =
+                new Label(
+                        "●  ONLINE"
+                );
+
+        statusOnline.getStyleClass().add(
+                "ai-online"
+        );
+
+        HBox esquerda =
+                new HBox(
+                        10,
+                        logo,
+                        titulo,
+                        statusOnline
+                );
+
+        esquerda.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        Region space =
+                new Region();
+
+        HBox.setHgrow(
+                space,
+                Priority.ALWAYS
+        );
+
+        botaoRenomear =
+                new Button(
+                        "✎  Renomear"
+                );
+
+        botaoExcluir =
+                new Button(
+                        "⌫  Excluir"
+                );
+
+        botaoRenomear.getStyleClass().add(
+                "ai-header-button"
+        );
+
+        botaoExcluir.getStyleClass().add(
+                "ai-header-button"
+        );
+
+        HBox header =
+                new HBox(
+                        9,
+                        esquerda,
+                        space,
+                        botaoRenomear,
+                        botaoExcluir
+                );
+
+        header.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        header.setPadding(
+                new Insets(
+                        15,
+                        22,
+                        15,
+                        22
+                )
+        );
+
+        header.getStyleClass().add(
+                "ai-header"
+        );
+
+        return header;
+    }
+
+    // =========================================================
+    // TELA INICIAL
+    // =========================================================
+
+    private StackPane criarTelaInicial() {
+
+        StackPane logo =
+                criarLogo(38);
+
+        Label badge =
+                new Label(
+                        "✦  FAITH INTELLIGENCE"
+                );
+
+        badge.getStyleClass().add(
+                "ai-welcome-badge"
+        );
+
+        Label titulo =
+                new Label(
+                        "Como posso ajudar?"
+                );
+
+        titulo.getStyleClass().add(
+                "ai-welcome-title"
+        );
+
+        Label subtitulo =
+                new Label(
+                        "Pergunte, explore, aprenda e transforme suas ideias."
+                );
+
+        subtitulo.getStyleClass().add(
+                "ai-welcome-subtitle"
+        );
+
+        HBox sugestoes =
+                new HBox(
+                        10,
+                        criarSugestao(
+                                "✦",
+                                "Criar uma ideia",
+                                "Me dê uma ideia incrível para um projeto"
+                        ),
+                        criarSugestao(
+                                "</>",
+                                "Programar",
+                                "Me ajude com meu código Java"
+                        ),
+                        criarSugestao(
+                                "◈",
+                                "Aprender",
+                                "Me ensine algo novo hoje"
+                        )
+                );
+
+        sugestoes.setAlignment(
+                Pos.CENTER
+        );
+
+        VBox conteudo =
+                new VBox(
+                        16,
+                        logo,
+                        badge,
+                        titulo,
+                        subtitulo,
+                        sugestoes
+                );
+
+        conteudo.setAlignment(
+                Pos.CENTER
+        );
+
+        StackPane wrapper =
+                new StackPane(conteudo);
+
+        animarWelcome(conteudo);
+
+        return wrapper;
+    }
+
+    private VBox criarSugestao(
+            String icon,
             String titulo,
-            String descricao,
-            String promptSugerido
+            String prompt
     ) {
 
-        Label tituloLabel = new Label(titulo);
+        Label i =
+                new Label(icon);
 
-        tituloLabel.getStyleClass().add("suggestion-card-title");
-
-        tituloLabel.setStyle(
-                "-fx-font-weight: bold;" +
-                        "-fx-font-size: 13px;"
+        i.getStyleClass().add(
+                "ai-suggestion-icon"
         );
 
-        tituloLabel.setWrapText(true);
+        Label t =
+                new Label(titulo);
 
-        Label descLabel = new Label(descricao);
+        t.getStyleClass().add(
+                "ai-suggestion-title"
+        );
 
-        descLabel.getStyleClass().add("suggestion-card-desc");
+        Label p =
+                new Label(prompt);
 
-        descLabel.setStyle("-fx-font-size: 11px;");
+        p.setWrapText(true);
 
-        descLabel.setWrapText(true);
+        p.getStyleClass().add(
+                "ai-suggestion-text"
+        );
 
-        VBox cartao = new VBox(6, tituloLabel, descLabel);
+        VBox card =
+                new VBox(
+                        7,
+                        i,
+                        t,
+                        p
+                );
 
-        cartao.getStyleClass().add("suggestion-card");
+        card.setPrefWidth(185);
+        card.setPrefHeight(105);
 
-        cartao.setPadding(new Insets(14));
+        card.getStyleClass().add(
+                "ai-suggestion"
+        );
 
-        cartao.setPrefWidth(190);
+        card.setOnMouseClicked(e -> {
 
-        cartao.setMaxWidth(190);
+            campoMensagem.setText(prompt);
+            campoMensagem.requestFocus();
 
-        cartao.setStyle("-fx-cursor: hand;");
+            animarClique(card);
+        });
 
-        cartao.setOnMouseClicked(
-                evento -> {
+        return card;
+    }
 
-                    campoMensagem.setText(promptSugerido);
+    // =========================================================
+    // ESTRELAS
+    // =========================================================
 
-                    campoMensagem.requestFocus();
+    private Pane criarEstrelas() {
 
-                    campoMensagem.positionCaret(
-                            promptSugerido.length()
+        Pane pane = new Pane();
+
+        pane.setMouseTransparent(true);
+
+        Random random =
+                new Random(93);
+
+        for (int i = 0; i < 65; i++) {
+
+            Circle c =
+                    new Circle(
+                            .35
+                                    + random.nextDouble()
+                                    * .8
                     );
-                }
+
+            c.setFill(
+                    Color.web(
+                            "#BCE8FF",
+                            .10
+                                    + random.nextDouble()
+                                    * .40
+                    )
+            );
+
+            double x =
+                    random.nextDouble();
+
+            double y =
+                    random.nextDouble();
+
+            c.layoutXProperty().bind(
+                    pane.widthProperty()
+                            .multiply(x)
+            );
+
+            c.layoutYProperty().bind(
+                    pane.heightProperty()
+                            .multiply(y)
+            );
+
+            pane.getChildren().add(c);
+        }
+
+        return pane;
+    }
+
+    // =========================================================
+    // COMPOSER
+    // =========================================================
+
+    private VBox criarComposer() {
+
+        origemResposta =
+                new Label();
+
+        fonteResposta =
+                new Label();
+
+        status =
+                new Label();
+
+        origemResposta.getStyleClass().add(
+                "ai-source"
         );
 
-        return cartao;
-    }
-
-    // ================================================================
-    // BOLHAS DE MENSAGEM
-    // ================================================================
-
-    private void adicionarBolha(String texto, boolean doUsuario) {
-
-        Label textoLabel = new Label(texto);
-
-        textoLabel.setWrapText(true);
-
-        textoLabel.setMaxWidth(480);
-
-        textoLabel.getStyleClass().add(
-                doUsuario ? "bubble-user-text" : "bubble-ai-text"
+        fonteResposta.getStyleClass().add(
+                "ai-source-detail"
         );
 
-        HBox linha = new HBox(textoLabel);
-
-        linha.setAlignment(
-                doUsuario ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT
+        status.getStyleClass().add(
+                "ai-status"
         );
 
-        mensagensBox.getChildren().add(linha);
+        Region spacer =
+                new Region();
 
-        rolarParaBaixo();
+        HBox.setHgrow(
+                spacer,
+                Priority.ALWAYS
+        );
+
+        HBox info =
+                new HBox(
+                        8,
+                        origemResposta,
+                        fonteResposta,
+                        spacer,
+                        status
+                );
+
+        info.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        botaoCopiar =
+                new Button("▣  Copiar");
+
+        botaoRegenerar =
+                new Button("↻  Regenerar");
+
+        botaoCopiar.getStyleClass().add(
+                "ai-small-action"
+        );
+
+        botaoRegenerar.getStyleClass().add(
+                "ai-small-action"
+        );
+
+        botaoCopiar.setDisable(true);
+        botaoRegenerar.setDisable(true);
+
+        HBox actions =
+                new HBox(
+                        7,
+                        botaoCopiar,
+                        botaoRegenerar
+                );
+
+        campoMensagem =
+                new TextField();
+
+        campoMensagem.setPromptText(
+                "Envie uma mensagem para FAITH AI..."
+        );
+
+        campoMensagem.getStyleClass().add(
+                "ai-input"
+        );
+
+        HBox.setHgrow(
+                campoMensagem,
+                Priority.ALWAYS
+        );
+
+        Label shortcut =
+                new Label("ENTER");
+
+        shortcut.getStyleClass().add(
+                "ai-shortcut"
+        );
+
+        botaoEnviar =
+                new Button("➤");
+
+        botaoEnviar.getStyleClass().add(
+                "ai-send"
+        );
+
+        botaoEnviar.setMinSize(52, 52);
+        botaoEnviar.setPrefSize(52, 52);
+
+        HBox composer =
+                new HBox(
+                        10,
+                        campoMensagem,
+                        shortcut,
+                        botaoEnviar
+                );
+
+        composer.setAlignment(
+                Pos.CENTER
+        );
+
+        composer.getStyleClass().add(
+                "ai-composer"
+        );
+
+        VBox footer =
+                new VBox(
+                        7,
+                        info,
+                        actions,
+                        composer
+                );
+
+        footer.setPadding(
+                new Insets(
+                        8,
+                        30,
+                        18,
+                        30
+                )
+        );
+
+        footer.getStyleClass().add(
+                "ai-footer"
+        );
+
+        return footer;
     }
 
-    private void adicionarBolhaErro(String texto) {
-
-        Label textoLabel = new Label(texto);
-
-        textoLabel.setWrapText(true);
-
-        textoLabel.setMaxWidth(480);
-
-        textoLabel.getStyleClass().add("bubble-error");
-
-        HBox linha = new HBox(textoLabel);
-
-        linha.setAlignment(Pos.CENTER_LEFT);
-
-        mensagensBox.getChildren().add(linha);
-
-        rolarParaBaixo();
-    }
-
-    private void rolarParaBaixo() {
-
-        scrollMensagens.layout();
-
-        scrollMensagens.setVvalue(1.0);
-    }
-
-    // ================================================================
-    // ESTADO VAZIO x LISTA DE MENSAGENS
-    // ================================================================
-
-    private void atualizarEstadoVazio() {
-
-        boolean vazio = mensagensBox.getChildren().size() <= 1;
-
-        estadoVazio.setVisible(vazio);
-
-        estadoVazio.setManaged(vazio);
-
-        scrollMensagens.setVisible(!vazio);
-
-        scrollMensagens.setManaged(!vazio);
-    }
-
-    // ================================================================
+    // =========================================================
     // BUSCA
-    // ================================================================
+    // =========================================================
 
-    private void aplicarFiltroBusca(String termo) {
+    private void configurarBusca() {
 
-        aplicandoFiltro = true;
+        listaConversas
+                .getItems()
+                .addListener(
+                        (ListChangeListener<Conversation>) c -> {
 
-        String valor = termo == null ? "" : termo.trim().toLowerCase();
+                            if (!filtrando) {
+                                listaCompleta =
+                                        new ArrayList<>(
+                                                listaConversas
+                                                        .getItems()
+                                        );
+                            }
+                        }
+                );
 
-        if (valor.isEmpty()) {
+        campoBusca
+                .textProperty()
+                .addListener(
+                        (obs, antigo, novo) ->
+                                filtrar(novo)
+                );
+    }
 
-            listaConversas.getItems().setAll(ultimaListaCompleta);
+    private void filtrar(String texto) {
+
+        filtrando = true;
+
+        String busca =
+                texto == null
+                        ? ""
+                        : texto
+                        .trim()
+                        .toLowerCase();
+
+        if (busca.isBlank()) {
+
+            listaConversas
+                    .getItems()
+                    .setAll(
+                            listaCompleta
+                    );
 
         } else {
 
-            List<Conversation> filtradas = ultimaListaCompleta.stream()
-                    .filter(
-                            c -> c.getTitulo() != null
-                                    && c.getTitulo().toLowerCase().contains(valor)
-                    )
-                    .collect(Collectors.toList());
+            List<Conversation> resultado =
+                    listaCompleta
+                            .stream()
+                            .filter(c ->
+                                    c.getTitulo() != null
+                                            &&
+                                            c.getTitulo()
+                                                    .toLowerCase()
+                                                    .contains(busca)
+                            )
+                            .collect(
+                                    Collectors.toList()
+                            );
 
-            listaConversas.getItems().setAll(filtradas);
+            listaConversas
+                    .getItems()
+                    .setAll(resultado);
         }
 
-        aplicandoFiltro = false;
+        filtrando = false;
     }
 
-    // ================================================================
-    // TEMA CLARO / ESCURO
-    // ================================================================
+    // =========================================================
+    // HISTÓRICO PREMIUM
+    // =========================================================
+
+    private class ConversationCell
+            extends ListCell<Conversation> {
+
+        private final Label categoria =
+                new Label();
+
+        private final Label icon =
+                new Label("◇");
+
+        private final Label titulo =
+                new Label();
+
+        private final Label horario =
+                new Label();
+
+        private final VBox container =
+                new VBox(4);
+
+        ConversationCell() {
+
+            categoria.getStyleClass().add(
+                    "history-category"
+            );
+
+            icon.getStyleClass().add(
+                    "history-icon"
+            );
+
+            titulo.getStyleClass().add(
+                    "history-title-text"
+            );
+
+            horario.getStyleClass().add(
+                    "history-time"
+            );
+
+            titulo.setTextOverrun(
+                    OverrunStyle.ELLIPSIS
+            );
+
+            HBox.setHgrow(
+                    titulo,
+                    Priority.ALWAYS
+            );
+
+            HBox row =
+                    new HBox(
+                            8,
+                            icon,
+                            titulo,
+                            horario
+                    );
+
+            row.setAlignment(
+                    Pos.CENTER_LEFT
+            );
+
+            row.getStyleClass().add(
+                    "history-row"
+            );
+
+            container.getChildren().addAll(
+                    categoria,
+                    row
+            );
+        }
+
+        @Override
+        protected void updateItem(
+                Conversation conversa,
+                boolean empty
+        ) {
+
+            super.updateItem(
+                    conversa,
+                    empty
+            );
+
+            if (empty || conversa == null) {
+
+                setGraphic(null);
+                setText(null);
+                return;
+            }
+
+            titulo.setText(
+                    conversa.getTitulo() == null
+                            ? "Nova conversa"
+                            : conversa.getTitulo()
+            );
+
+            LocalDateTime data =
+                    conversa.getUltimaAtualizacao();
+
+            horario.setText(
+                    data.format(
+                            DateTimeFormatter.ofPattern(
+                                    "HH:mm"
+                            )
+                    )
+            );
+
+            categoria.setText(
+                    obterCategoria(data)
+            );
+
+            /*
+             * Só mostra o cabeçalho de categoria
+             * quando ele muda em relação ao item anterior.
+             */
+            int indice = getIndex();
+
+            boolean mostrarCategoria = true;
+
+            if (indice > 0
+                    && indice <
+                    getListView()
+                            .getItems()
+                            .size()) {
+
+                Conversation anterior =
+                        getListView()
+                                .getItems()
+                                .get(indice - 1);
+
+                String categoriaAnterior =
+                        obterCategoria(
+                                anterior
+                                        .getUltimaAtualizacao()
+                        );
+
+                mostrarCategoria =
+                        !categoriaAnterior.equals(
+                                categoria.getText()
+                        );
+            }
+
+            categoria.setVisible(
+                    mostrarCategoria
+            );
+
+            categoria.setManaged(
+                    mostrarCategoria
+            );
+
+            setText(null);
+            setGraphic(container);
+        }
+    }
+
+    private String obterCategoria(
+            LocalDateTime data
+    ) {
+
+        LocalDate hoje =
+                LocalDate.now();
+
+        LocalDate d =
+                data.toLocalDate();
+
+        if (d.equals(hoje)) {
+            return "HOJE";
+        }
+
+        if (d.equals(
+                hoje.minusDays(1)
+        )) {
+            return "ONTEM";
+        }
+
+        if (!d.isBefore(
+                hoje.minusDays(7)
+        )) {
+            return "ÚLTIMOS 7 DIAS";
+        }
+
+        return "ANTERIORES";
+    }
+
+    // =========================================================
+    // EVENTOS
+    // =========================================================
+
+    private void configurarEventos() {
+
+        botaoNovaConversa.setOnAction(e -> {
+
+            animarClique(
+                    botaoNovaConversa
+            );
+
+            if (aoNovaConversa != null) {
+                aoNovaConversa.run();
+            }
+        });
+
+        botaoRenomear.setOnAction(e -> {
+
+            if (aoRenomear != null) {
+                aoRenomear.run();
+            }
+        });
+
+        botaoExcluir.setOnAction(e -> {
+
+            if (aoExcluir != null) {
+                aoExcluir.run();
+            }
+        });
+
+        botaoRegenerar.setOnAction(e -> {
+
+            if (aoRegenerar != null) {
+                aoRegenerar.run();
+            }
+        });
+
+        botaoCopiar.setOnAction(
+                e -> copiarResposta()
+        );
+
+        botaoTema.setOnAction(
+                e -> alternarTema()
+        );
+
+        listaConversas.setOnMouseClicked(e -> {
+
+            Conversation conversa =
+                    listaConversas
+                            .getSelectionModel()
+                            .getSelectedItem();
+
+            if (conversa != null
+                    && aoSelecionarConversa != null) {
+
+                aoSelecionarConversa.accept(
+                        conversa
+                );
+            }
+        });
+    }
+
+    // =========================================================
+    // MENSAGENS
+    // =========================================================
+
+    private void criarMensagemUsuario(
+            String texto
+    ) {
+
+        Label mensagem =
+                new Label(texto);
+
+        mensagem.setWrapText(true);
+        mensagem.setMaxWidth(580);
+
+        mensagem.getStyleClass().add(
+                "message-user"
+        );
+
+        Label avatar =
+                new Label("U");
+
+        avatar.getStyleClass().add(
+                "message-user-avatar"
+        );
+
+        HBox row =
+                new HBox(
+                        10,
+                        mensagem,
+                        avatar
+                );
+
+        row.setAlignment(
+                Pos.TOP_RIGHT
+        );
+
+        row.setPadding(
+                new Insets(
+                        2,
+                        5,
+                        2,
+                        150
+                )
+        );
+
+        mensagensBox
+                .getChildren()
+                .add(row);
+
+        animarMensagem(row, true);
+        scrollFinal();
+    }
+
+    private void criarMensagemIA(
+            String texto
+    ) {
+
+        StackPane avatar =
+                criarLogo(17);
+
+        Label nome =
+                new Label("FAITH AI");
+
+        nome.getStyleClass().add(
+                "message-ai-name"
+        );
+
+        VBox resposta =
+                formatarResposta(texto);
+
+        VBox content =
+                new VBox(
+                        5,
+                        nome,
+                        resposta
+                );
+
+        HBox row =
+                new HBox(
+                        11,
+                        avatar,
+                        content
+                );
+
+        row.setAlignment(
+                Pos.TOP_LEFT
+        );
+
+        row.setPadding(
+                new Insets(
+                        2,
+                        130,
+                        2,
+                        5
+                )
+        );
+
+        mensagensBox
+                .getChildren()
+                .add(row);
+
+        animarMensagem(row, false);
+        scrollFinal();
+    }
+
+    private VBox formatarResposta(
+            String texto
+    ) {
+
+        VBox card =
+                new VBox(9);
+
+        card.setMaxWidth(760);
+
+        card.getStyleClass().add(
+                "message-ai-card"
+        );
+
+        if (texto == null
+                || texto.isBlank()) {
+            return card;
+        }
+
+        for (String original :
+                texto.split("\\R")) {
+
+            String linha =
+                    original.trim();
+
+            if (linha.isBlank()) {
+                continue;
+            }
+
+            if (linha.matches(
+                    "^#{1,6}\\s+.*"
+            )) {
+
+                Label heading =
+                        new Label(
+                                limparMarkdown(
+                                        linha.replaceFirst(
+                                                "^#{1,6}\\s+",
+                                                ""
+                                        )
+                                )
+                        );
+
+                heading.setWrapText(true);
+
+                heading.getStyleClass().add(
+                        "message-ai-heading"
+                );
+
+                card.getChildren().add(
+                        heading
+                );
+
+                continue;
+            }
+
+            if (linha.matches(
+                    "^[-*•]\\s+.*"
+            )) {
+
+                Label bullet =
+                        new Label("•");
+
+                bullet.getStyleClass().add(
+                        "message-ai-bullet"
+                );
+
+                Label body =
+                        criarBody(
+                                linha.replaceFirst(
+                                        "^[-*•]\\s+",
+                                        ""
+                                )
+                        );
+
+                HBox row =
+                        new HBox(
+                                8,
+                                bullet,
+                                body
+                        );
+
+                row.setAlignment(
+                        Pos.TOP_LEFT
+                );
+
+                card.getChildren().add(row);
+
+                continue;
+            }
+
+            if (linha.matches(
+                    "^\\d+[.)]\\s+.*"
+            )) {
+
+                String numero =
+                        linha.replaceFirst(
+                                "^(\\d+)[.)].*",
+                                "$1"
+                        );
+
+                Label num =
+                        new Label(numero);
+
+                num.getStyleClass().add(
+                        "message-ai-number"
+                );
+
+                Label body =
+                        criarBody(
+                                linha.replaceFirst(
+                                        "^\\d+[.)]\\s+",
+                                        ""
+                                )
+                        );
+
+                HBox row =
+                        new HBox(
+                                9,
+                                num,
+                                body
+                        );
+
+                row.setAlignment(
+                        Pos.TOP_LEFT
+                );
+
+                card.getChildren().add(row);
+
+                continue;
+            }
+
+            card.getChildren().add(
+                    criarBody(linha)
+            );
+        }
+
+        return card;
+    }
+
+    private Label criarBody(
+            String texto
+    ) {
+
+        Label label =
+                new Label(
+                        limparMarkdown(texto)
+                );
+
+        label.setWrapText(true);
+
+        label.getStyleClass().add(
+                "message-ai-body"
+        );
+
+        return label;
+    }
+
+    private String limparMarkdown(
+            String texto
+    ) {
+
+        return texto
+                .replace("**", "")
+                .replace("__", "")
+                .replace("`", "")
+                .trim();
+    }
+
+    // =========================================================
+    // LOGO
+    // =========================================================
+
+    private StackPane criarLogo(
+            double raio
+    ) {
+
+        Circle glow =
+                new Circle(raio + 6);
+
+        glow.setFill(
+                Color.web(
+                        "#168CFF",
+                        .15
+                )
+        );
+
+        glow.setEffect(
+                new GaussianBlur(8)
+        );
+
+        Circle circle =
+                new Circle(raio);
+
+        circle.setFill(
+                new RadialGradient(
+                        0, 0,
+                        .4, .3,
+                        .8,
+                        true,
+                        CycleMethod.NO_CYCLE,
+                        new Stop(
+                                0,
+                                Color.web("#73F2FF")
+                        ),
+                        new Stop(
+                                .35,
+                                Color.web("#168CFF")
+                        ),
+                        new Stop(
+                                1,
+                                Color.web("#03215E")
+                        )
+                )
+        );
+
+        circle.setStroke(
+                Color.web(
+                        "#7AEFFF",
+                        .65
+                )
+        );
+
+        Label star =
+                new Label("✦");
+
+        star.getStyleClass().add(
+                "ai-logo-star"
+        );
+
+        return new StackPane(
+                glow,
+                circle,
+                star
+        );
+    }
+
+    // =========================================================
+    // ANIMAÇÕES
+    // =========================================================
+
+    private void animarWelcome(
+            Node node
+    ) {
+
+        node.setOpacity(0);
+        node.setTranslateY(20);
+
+        FadeTransition fade =
+                new FadeTransition(
+                        Duration.millis(800),
+                        node
+                );
+
+        fade.setToValue(1);
+
+        TranslateTransition move =
+                new TranslateTransition(
+                        Duration.millis(850),
+                        node
+                );
+
+        move.setToY(0);
+
+        move.setInterpolator(
+                Interpolator.EASE_OUT
+        );
+
+        new ParallelTransition(
+                fade,
+                move
+        ).play();
+    }
+
+    private void animarMensagem(
+            Node node,
+            boolean usuario
+    ) {
+
+        node.setOpacity(0);
+
+        node.setTranslateX(
+                usuario ? 18 : -18
+        );
+
+        node.setTranslateY(10);
+
+        FadeTransition fade =
+                new FadeTransition(
+                        Duration.millis(320),
+                        node
+                );
+
+        fade.setToValue(1);
+
+        TranslateTransition move =
+                new TranslateTransition(
+                        Duration.millis(390),
+                        node
+                );
+
+        move.setToX(0);
+        move.setToY(0);
+
+        move.setInterpolator(
+                Interpolator.EASE_OUT
+        );
+
+        new ParallelTransition(
+                fade,
+                move
+        ).play();
+    }
+
+    private void animarClique(
+            Node node
+    ) {
+
+        ScaleTransition scale =
+                new ScaleTransition(
+                        Duration.millis(95),
+                        node
+                );
+
+        scale.setToX(.97);
+        scale.setToY(.97);
+        scale.setAutoReverse(true);
+        scale.setCycleCount(2);
+
+        scale.play();
+    }
+
+    // =========================================================
+    // OUTROS
+    // =========================================================
+
+    private void atualizarTelaInicial() {
+
+        boolean vazio =
+                mensagensBox
+                        .getChildren()
+                        .isEmpty();
+
+        telaInicial.setVisible(vazio);
+        telaInicial.setManaged(vazio);
+
+        scrollMensagens.setVisible(!vazio);
+        scrollMensagens.setManaged(!vazio);
+    }
+
+    private void scrollFinal() {
+
+        scrollMensagens.applyCss();
+        scrollMensagens.layout();
+        scrollMensagens.setVvalue(1);
+    }
+
+    private void copiarResposta() {
+
+        if (ultimaRespostaIA == null
+                || ultimaRespostaIA.isBlank()) {
+            return;
+        }
+
+        ClipboardContent content =
+                new ClipboardContent();
+
+        content.putString(
+                ultimaRespostaIA
+        );
+
+        Clipboard
+                .getSystemClipboard()
+                .setContent(content);
+
+        status.setText(
+                "✓ Copiado"
+        );
+    }
 
     private void alternarTema() {
 
@@ -632,49 +1747,61 @@ public class ChatView {
 
         if (temaEscuro) {
 
-            root.getStyleClass().add("dark");
+            if (!root.getStyleClass()
+                    .contains("dark")) {
 
-            botaoTema.setText("Claro");
+                root.getStyleClass()
+                        .add("dark");
+            }
+
+            botaoTema.setText("☾");
 
         } else {
 
-            root.getStyleClass().remove("dark");
+            root.getStyleClass()
+                    .remove("dark");
 
-            botaoTema.setText("Escuro");
+            botaoTema.setText("☀");
         }
     }
 
-    public boolean isTemaEscuro() {
-        return temaEscuro;
-    }
-
-    // ================================================================
+    // =========================================================
     // CALLBACKS
-    // ================================================================
+    // =========================================================
 
-    public void setAoSelecionarConversa(Consumer<Conversation> callback) {
+    public void setAoSelecionarConversa(
+            Consumer<Conversation> callback
+    ) {
         aoSelecionarConversa = callback;
     }
 
-    public void setAoNovaConversa(Runnable callback) {
+    public void setAoNovaConversa(
+            Runnable callback
+    ) {
         aoNovaConversa = callback;
     }
 
-    public void setAoRegenerar(Runnable callback) {
+    public void setAoRegenerar(
+            Runnable callback
+    ) {
         aoRegenerar = callback;
     }
 
-    public void setAoRenomear(Runnable callback) {
+    public void setAoRenomear(
+            Runnable callback
+    ) {
         aoRenomear = callback;
     }
 
-    public void setAoExcluir(Runnable callback) {
+    public void setAoExcluir(
+            Runnable callback
+    ) {
         aoExcluir = callback;
     }
 
-    // ================================================================
+    // =========================================================
     // GETTERS
-    // ================================================================
+    // =========================================================
 
     public BorderPane getRoot() {
         return root;
@@ -704,22 +1831,31 @@ public class ChatView {
         return botaoRegenerar;
     }
 
-    public ListView<Conversation> getListaConversas() {
+    public ListView<Conversation>
+    getListaConversas() {
         return listaConversas;
     }
 
-    // ================================================================
-    // MENSAGENS (API usada pelo ChatController)
-    // ================================================================
+    // =========================================================
+    // CONTROLLER API
+    // =========================================================
 
-    public void adicionarMensagemUsuario(String mensagem) {
+    public void adicionarMensagemUsuario(
+            String mensagem
+    ) {
 
-        adicionarBolha(mensagem, true);
+        criarMensagemUsuario(mensagem);
     }
 
-    public void adicionarMensagemIA(String mensagem) {
+    public void adicionarMensagemIA(
+            String mensagem
+    ) {
 
-        adicionarMensagemIA(mensagem, "Fallback local", null);
+        adicionarMensagemIA(
+                mensagem,
+                "FAITH AI",
+                null
+        );
     }
 
     public void adicionarMensagemIA(
@@ -731,199 +1867,184 @@ public class ChatView {
         ultimaRespostaIA = mensagem;
 
         botaoCopiar.setDisable(false);
-
         botaoRegenerar.setDisable(false);
 
-        adicionarBolha(mensagem, false);
+        criarMensagemIA(mensagem);
 
         origemResposta.setText(
-                origem == null || origem.isBlank() ? "" : "Origem: " + origem
+                origem == null
+                        || origem.isBlank()
+                        ? ""
+                        : "● " + origem
         );
 
-        if (fonte == null || fonte.isBlank()) {
-
-            fonteResposta.setText("");
-
-        } else {
-
-            fonteResposta.setText("Fonte: " + fonte);
-        }
+        fonteResposta.setText(
+                fonte == null
+                        || fonte.isBlank()
+                        ? ""
+                        : fonte
+        );
     }
 
-    public void adicionarErro(String mensagem) {
+    public void adicionarErro(
+            String mensagem
+    ) {
 
-        adicionarBolhaErro(mensagem);
+        Label erro =
+                new Label(
+                        "⚠  " + mensagem
+                );
 
-        status.setText("Ocorreu um erro.");
+        erro.setWrapText(true);
+
+        erro.getStyleClass().add(
+                "message-error"
+        );
+
+        mensagensBox
+                .getChildren()
+                .add(erro);
+
+        animarMensagem(
+                erro,
+                false
+        );
+
+        scrollFinal();
     }
 
     public void limparConversa() {
 
-        mensagensBox.getChildren().clear();
+        mensagensBox
+                .getChildren()
+                .clear();
 
         ultimaRespostaIA = "";
 
         botaoCopiar.setDisable(true);
-
         botaoRegenerar.setDisable(true);
 
         origemResposta.setText("");
-
         fonteResposta.setText("");
-
         status.setText("");
+
+        atualizarTelaInicial();
     }
 
-    public void carregarConversa(Conversation conversa) {
+    public void carregarConversa(
+            Conversation conversa
+    ) {
 
-        mensagensBox.getChildren().clear();
+        mensagensBox
+                .getChildren()
+                .clear();
 
         ultimaRespostaIA = "";
 
-        botaoCopiar.setDisable(true);
+        if (conversa == null
+                || conversa.getMensagens() == null) {
 
-        botaoRegenerar.setDisable(true);
-
-        origemResposta.setText("");
-
-        fonteResposta.setText("");
-
-        for (var mensagem : conversa.getMensagens()) {
-
-            if ("user".equals(mensagem.getRole())) {
-
-                adicionarBolha(mensagem.getContent(), true);
-
-            } else if ("assistant".equals(mensagem.getRole())) {
-
-                adicionarBolha(mensagem.getContent(), false);
-
-                ultimaRespostaIA = mensagem.getContent();
-
-                botaoCopiar.setDisable(false);
-
-                botaoRegenerar.setDisable(false);
-            }
-        }
-    }
-
-    public void setCarregando(boolean carregando) {
-
-        botaoEnviar.setDisable(carregando);
-
-        campoMensagem.setDisable(carregando);
-
-        botaoNovaConversa.setDisable(false);
-
-        botaoCopiar.setDisable(
-                carregando || ultimaRespostaIA == null || ultimaRespostaIA.isBlank()
-        );
-
-        botaoRegenerar.setDisable(
-                carregando || ultimaRespostaIA == null || ultimaRespostaIA.isBlank()
-        );
-
-        status.setText(carregando ? "A IA está pensando..." : "");
-    }
-
-    public boolean confirmarExclusao(String titulo) {
-
-        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION);
-
-        alerta.setTitle("Excluir conversa");
-
-        alerta.setHeaderText("Excluir esta conversa?");
-
-        alerta.setContentText(
-                "A conversa \"" + titulo + "\" será removida do histórico."
-        );
-
-        return alerta.showAndWait()
-                .filter(resposta -> resposta == ButtonType.OK)
-                .isPresent();
-    }
-
-    private void copiarRespostaIA() {
-
-        if (ultimaRespostaIA == null || ultimaRespostaIA.isBlank()) {
+            atualizarTelaInicial();
             return;
         }
 
-        Clipboard clipboard = Clipboard.getSystemClipboard();
+        for (var mensagem :
+                conversa.getMensagens()) {
 
-        ClipboardContent content = new ClipboardContent();
+            if ("user".equals(
+                    mensagem.getRole()
+            )) {
 
-        content.putString(ultimaRespostaIA);
+                criarMensagemUsuario(
+                        mensagem.getContent()
+                );
 
-        clipboard.setContent(content);
+            } else if (
+                    "assistant".equals(
+                            mensagem.getRole()
+                    )
+            ) {
 
-        status.setText("Resposta copiada!");
-    }
+                criarMensagemIA(
+                        mensagem.getContent()
+                );
 
-    // ================================================================
-    // CÉLULA DO HISTÓRICO
-    // ================================================================
-
-    private class ConversationCell extends ListCell<Conversation> {
-
-        private final Label titulo;
-
-        private final Button excluir;
-
-        private final HBox caixa;
-
-        public ConversationCell() {
-
-            titulo = new Label();
-
-            titulo.setMaxWidth(Double.MAX_VALUE);
-
-            titulo.setStyle("-fx-text-fill: white;");
-
-            excluir = new Button("×");
-
-            excluir.setStyle(
-                    "-fx-background-color: transparent;" +
-                            "-fx-text-fill: white;" +
-                            "-fx-font-size: 16px;"
-            );
-
-            excluir.setOnAction(
-                    evento -> {
-
-                        Conversation conversa = getItem();
-
-                        if (conversa != null && aoExcluir != null) {
-
-                            getListView().getSelectionModel().select(conversa);
-
-                            aoExcluir.run();
-                        }
-                    }
-            );
-
-            caixa = new HBox(5, titulo, excluir);
-
-            caixa.setAlignment(Pos.CENTER_LEFT);
-
-            HBox.setHgrow(titulo, Priority.ALWAYS);
-        }
-
-        @Override
-        protected void updateItem(Conversation item, boolean empty) {
-
-            super.updateItem(item, empty);
-
-            if (empty || item == null) {
-
-                setGraphic(null);
-
-            } else {
-
-                titulo.setText(item.getTitulo());
-
-                setGraphic(caixa);
+                ultimaRespostaIA =
+                        mensagem.getContent();
             }
         }
+
+        boolean possuiResposta =
+                !ultimaRespostaIA.isBlank();
+
+        botaoCopiar.setDisable(
+                !possuiResposta
+        );
+
+        botaoRegenerar.setDisable(
+                !possuiResposta
+        );
+
+        atualizarTelaInicial();
+    }
+
+    public void setCarregando(
+            boolean carregando
+    ) {
+
+        botaoEnviar.setDisable(
+                carregando
+        );
+
+        campoMensagem.setDisable(
+                carregando
+        );
+
+        botaoCopiar.setDisable(
+                carregando
+                        || ultimaRespostaIA.isBlank()
+        );
+
+        botaoRegenerar.setDisable(
+                carregando
+                        || ultimaRespostaIA.isBlank()
+        );
+
+        status.setText(
+                carregando
+                        ? "✦ Pensando..."
+                        : ""
+        );
+    }
+
+    public boolean confirmarExclusao(
+            String titulo
+    ) {
+
+        Alert alert =
+                new Alert(
+                        Alert.AlertType.CONFIRMATION
+                );
+
+        alert.setTitle(
+                "Excluir conversa"
+        );
+
+        alert.setHeaderText(
+                "Excluir esta conversa?"
+        );
+
+        alert.setContentText(
+                "\"" + titulo +
+                        "\" será removida do histórico."
+        );
+
+        return alert
+                .showAndWait()
+                .filter(
+                        b ->
+                                b == ButtonType.OK
+                )
+                .isPresent();
     }
 }
