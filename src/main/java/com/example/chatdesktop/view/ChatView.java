@@ -64,6 +64,11 @@ public class ChatView {
 
     private boolean temaEscuro = true;
 
+    // Animações premium
+    private Timeline digitacaoAtual;
+    private HBox indicadorPensando;
+    private Timeline animacaoPensando;
+
     private Consumer<Conversation>
             aoSelecionarConversa;
 
@@ -176,6 +181,7 @@ public class ChatView {
                 );
 
         configurarEventos();
+        configurarMicroAnimacoes();
         atualizarTelaInicial();
     }
 
@@ -1162,6 +1168,35 @@ public class ChatView {
 
             setText(null);
             setGraphic(container);
+
+            if (container.getOpacity() == 1.0) {
+                container.setOpacity(0);
+                container.setTranslateX(-8);
+
+                FadeTransition fade =
+                        new FadeTransition(
+                                Duration.millis(220),
+                                container
+                        );
+
+                fade.setToValue(1);
+
+                TranslateTransition move =
+                        new TranslateTransition(
+                                Duration.millis(260),
+                                container
+                        );
+
+                move.setToX(0);
+                move.setInterpolator(
+                        Interpolator.EASE_OUT
+                );
+
+                new ParallelTransition(
+                        fade,
+                        move
+                ).play();
+            }
         }
     }
 
@@ -1360,6 +1395,162 @@ public class ChatView {
 
         animarMensagem(row, false);
         scrollFinal();
+    }
+
+    /*
+     * Resposta nova da IA:
+     * primeiro entra o card, depois o texto é "digitado".
+     * Ao terminar, trocamos o texto simples pelo renderer Markdown.
+     */
+    private void criarMensagemIAAnimada(
+            String texto
+    ) {
+
+        if (digitacaoAtual != null) {
+            digitacaoAtual.stop();
+        }
+
+        StackPane avatar =
+                criarLogo(17);
+
+        Label nome =
+                new Label("FAITH AI");
+
+        nome.getStyleClass().add(
+                "message-ai-name"
+        );
+
+        Label digitando =
+                new Label("");
+
+        digitando.setWrapText(true);
+        digitando.setMaxWidth(730);
+
+        digitando.getStyleClass().add(
+                "message-ai-body"
+        );
+
+        VBox card =
+                new VBox(9, digitando);
+
+        card.setMaxWidth(760);
+
+        card.getStyleClass().add(
+                "message-ai-card"
+        );
+
+        VBox content =
+                new VBox(
+                        5,
+                        nome,
+                        card
+                );
+
+        HBox row =
+                new HBox(
+                        11,
+                        avatar,
+                        content
+                );
+
+        row.setAlignment(
+                Pos.TOP_LEFT
+        );
+
+        row.setPadding(
+                new Insets(
+                        2,
+                        130,
+                        2,
+                        5
+                )
+        );
+
+        mensagensBox
+                .getChildren()
+                .add(row);
+
+        animarMensagem(row, false);
+        scrollFinal();
+
+        if (texto == null || texto.isBlank()) {
+            return;
+        }
+
+        final String respostaCompleta = texto;
+        final int[] indice = {0};
+
+        /*
+         * Textos muito grandes continuam rápidos:
+         * revelamos mais caracteres por frame.
+         */
+        int caracteresPorFrame;
+
+        if (texto.length() > 3000) {
+            caracteresPorFrame = 12;
+        } else if (texto.length() > 1500) {
+            caracteresPorFrame = 8;
+        } else if (texto.length() > 700) {
+            caracteresPorFrame = 5;
+        } else {
+            caracteresPorFrame = 3;
+        }
+
+        final int passo = caracteresPorFrame;
+
+        digitacaoAtual =
+                new Timeline(
+                        new KeyFrame(
+                                Duration.millis(18),
+                                evento -> {
+
+                                    indice[0] =
+                                            Math.min(
+                                                    indice[0] + passo,
+                                                    respostaCompleta.length()
+                                            );
+
+                                    digitando.setText(
+                                            limparMarkdown(
+                                                    respostaCompleta.substring(
+                                                            0,
+                                                            indice[0]
+                                                    )
+                                            )
+                                    );
+
+                                    scrollFinal();
+
+                                    if (indice[0] >= respostaCompleta.length()) {
+
+                                        digitacaoAtual.stop();
+
+                                        VBox respostaFormatada =
+                                                formatarResposta(
+                                                        respostaCompleta
+                                                );
+
+                                        content.getChildren()
+                                                .set(
+                                                        1,
+                                                        respostaFormatada
+                                                );
+
+                                        animarPulsoSuave(
+                                                respostaFormatada
+                                        );
+
+                                        scrollFinal();
+                                    }
+                                }
+                        )
+                );
+
+        digitacaoAtual.setCycleCount(
+                Animation.INDEFINITE
+        );
+
+        digitacaoAtual.play();
     }
 
     private VBox formatarResposta(
@@ -1693,6 +1884,264 @@ public class ChatView {
         scale.play();
     }
 
+    private void configurarMicroAnimacoes() {
+
+        Node[] botoes = {
+                botaoNovaConversa,
+                botaoRenomear,
+                botaoExcluir,
+                botaoTema,
+                botaoCopiar,
+                botaoRegenerar,
+                botaoEnviar
+        };
+
+        for (Node botao : botoes) {
+
+            if (botao == null) {
+                continue;
+            }
+
+            botao.setOnMouseEntered(e ->
+                    animarHover(botao, true)
+            );
+
+            botao.setOnMouseExited(e ->
+                    animarHover(botao, false)
+            );
+        }
+
+        campoMensagem.focusedProperty()
+                .addListener((obs, antigo, focado) -> {
+
+                    ScaleTransition scale =
+                            new ScaleTransition(
+                                    Duration.millis(180),
+                                    campoMensagem
+                            );
+
+                    scale.setToX(
+                            focado ? 1.008 : 1
+                    );
+
+                    scale.setToY(
+                            focado ? 1.008 : 1
+                    );
+
+                    scale.setInterpolator(
+                            Interpolator.EASE_OUT
+                    );
+
+                    scale.play();
+                });
+
+        campoMensagem.textProperty()
+                .addListener((obs, antigo, novo) -> {
+
+                    boolean temTexto =
+                            novo != null
+                                    && !novo.isBlank();
+
+                    botaoEnviar.setOpacity(
+                            temTexto ? 1.0 : 0.72
+                    );
+                });
+    }
+
+    private void animarHover(
+            Node node,
+            boolean entrando
+    ) {
+
+        ScaleTransition scale =
+                new ScaleTransition(
+                        Duration.millis(150),
+                        node
+                );
+
+        scale.setToX(
+                entrando ? 1.035 : 1
+        );
+
+        scale.setToY(
+                entrando ? 1.035 : 1
+        );
+
+        scale.setInterpolator(
+                Interpolator.EASE_OUT
+        );
+
+        scale.play();
+    }
+
+    private void animarPulsoSuave(
+            Node node
+    ) {
+
+        ScaleTransition pulso =
+                new ScaleTransition(
+                        Duration.millis(150),
+                        node
+                );
+
+        pulso.setFromX(.992);
+        pulso.setFromY(.992);
+
+        pulso.setToX(1);
+        pulso.setToY(1);
+
+        pulso.setInterpolator(
+                Interpolator.EASE_OUT
+        );
+
+        pulso.play();
+    }
+
+    private void mostrarIndicadorPensando() {
+
+        removerIndicadorPensando();
+
+        StackPane avatar =
+                criarLogo(17);
+
+        Label nome =
+                new Label("FAITH AI");
+
+        nome.getStyleClass().add(
+                "message-ai-name"
+        );
+
+        Label texto =
+                new Label("Pensando");
+
+        texto.getStyleClass().add(
+                "message-ai-body"
+        );
+
+        Label pontos =
+                new Label(".");
+
+        pontos.getStyleClass().add(
+                "message-ai-body"
+        );
+
+        HBox linhaPensando =
+                new HBox(
+                        2,
+                        texto,
+                        pontos
+                );
+
+        linhaPensando.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        VBox card =
+                new VBox(
+                        8,
+                        nome,
+                        linhaPensando
+                );
+
+        card.getStyleClass().add(
+                "message-ai-card"
+        );
+
+        indicadorPensando =
+                new HBox(
+                        11,
+                        avatar,
+                        card
+                );
+
+        indicadorPensando.setAlignment(
+                Pos.TOP_LEFT
+        );
+
+        indicadorPensando.setPadding(
+                new Insets(
+                        2,
+                        130,
+                        2,
+                        5
+                )
+        );
+
+        mensagensBox
+                .getChildren()
+                .add(
+                        indicadorPensando
+                );
+
+        animarMensagem(
+                indicadorPensando,
+                false
+        );
+
+        final int[] estado = {0};
+
+        animacaoPensando =
+                new Timeline(
+                        new KeyFrame(
+                                Duration.millis(360),
+                                e -> {
+
+                                    estado[0] =
+                                            (estado[0] + 1) % 4;
+
+                                    pontos.setText(
+                                            ".".repeat(
+                                                    Math.max(
+                                                            1,
+                                                            estado[0]
+                                                    )
+                                            )
+                                    );
+
+                                    ScaleTransition pulso =
+                                            new ScaleTransition(
+                                                    Duration.millis(330),
+                                                    avatar
+                                            );
+
+                                    pulso.setToX(1.07);
+                                    pulso.setToY(1.07);
+                                    pulso.setAutoReverse(true);
+                                    pulso.setCycleCount(2);
+                                    pulso.play();
+
+                                    scrollFinal();
+                                }
+                        )
+                );
+
+        animacaoPensando.setCycleCount(
+                Animation.INDEFINITE
+        );
+
+        animacaoPensando.play();
+        scrollFinal();
+    }
+
+    private void removerIndicadorPensando() {
+
+        if (animacaoPensando != null) {
+            animacaoPensando.stop();
+            animacaoPensando = null;
+        }
+
+        if (indicadorPensando != null) {
+
+            mensagensBox
+                    .getChildren()
+                    .remove(
+                            indicadorPensando
+                    );
+
+            indicadorPensando = null;
+        }
+    }
+
     // =========================================================
     // OUTROS
     // =========================================================
@@ -1869,7 +2318,8 @@ public class ChatView {
         botaoCopiar.setDisable(false);
         botaoRegenerar.setDisable(false);
 
-        criarMensagemIA(mensagem);
+        removerIndicadorPensando();
+        criarMensagemIAAnimada(mensagem);
 
         origemResposta.setText(
                 origem == null
@@ -1914,6 +2364,13 @@ public class ChatView {
     }
 
     public void limparConversa() {
+
+        if (digitacaoAtual != null) {
+            digitacaoAtual.stop();
+            digitacaoAtual = null;
+        }
+
+        removerIndicadorPensando();
 
         mensagensBox
                 .getChildren()
@@ -2010,11 +2467,19 @@ public class ChatView {
                         || ultimaRespostaIA.isBlank()
         );
 
-        status.setText(
-                carregando
-                        ? "✦ Pensando..."
-                        : ""
-        );
+        if (carregando) {
+
+            status.setText(
+                    "✦ Processando"
+            );
+
+            mostrarIndicadorPensando();
+
+        } else {
+
+            status.setText("");
+            removerIndicadorPensando();
+        }
     }
 
     public boolean confirmarExclusao(
